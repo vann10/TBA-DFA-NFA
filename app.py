@@ -1,5 +1,4 @@
 from flask import Flask, render_template, request, jsonify
-from automata import *  # Import semua fungsi DFA, NFA, REGEX dari file automata.py
 
 app = Flask(__name__)
 app.secret_key = 'your-secret-key-here'

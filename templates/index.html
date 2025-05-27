@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DFA Tester - Menu</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/js/all.min.js"></script>
+</head>
+<body class="bg-gray-900 text-white">
+    <div class="container mx-auto mt-10">
+        <h1 class="text-center text-4xl font-extrabold mb-8">DFA Tester - Menu</h1>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 pl-16 pr-16">
+            <div class="bg-gray-800 rounded-lg shadow-lg transition-transform transform hover:scale-105 hover:shadow-xl p-6 flex flex-col h-full">
+                <div class="flex justify-center mb-4">
+                    <i class="fas fa-cogs fa-5x text-blue-400"></i>
+                </div>
+                <h5 class="text-2xl font-semibold mb-2">Fungsi 1</h5>
+                <p class="flex-grow text-gray-300">Menerima Input Berupa DFA kemudian User Dapat Memasukkan Input Berupa String untuk Mengetes DFA.</p>
+                <a href="tes_dfa.html" class="mt-4 bg-blue-500 text-white font-semibold py-2 px-4 rounded hover:bg-blue-600 transition">Pilih</a>
+            </div>
+            <div class="bg-gray-800 rounded-lg shadow-lg transition-transform transform hover:scale-105 hover:shadow-xl p-6 flex flex-col h-full">
+                <div class="flex justify-center mb-4">
+                    <i class="fas fa-code fa-5x text-green-400"></i>
+                </div>
+                <h5 class="text-2xl font-semibold mb-2">Fungsi 2</h5>
+                <p class="flex-grow text-gray-300">Menerima input berupa REGEX dan dapat men-generate NFA yang berhubungan dan user dapat memasukkan input berupa string untuk mengetes NFA maupun REGEX.</p>
+                <a href="regex_nfa.html" class="mt-4 bg-green-500 text-white font-semibold py-2 px-4 rounded hover:bg-green-600 transition">Pilih</a>
+            </div>
+            <div class="bg-gray-800 rounded-lg shadow-lg transition-transform transform hover:scale-105 hover:shadow-xl p-6 flex flex-col h-full">
+                <div class="flex justify-center mb-4">
+                    <i class="fas fa-compress fa-5x text-yellow-400"></i>
+                </div>
+                <h5 class="text-2xl font-semibold mb-2">Fungsi 3</h5>
+                <p class="flex-grow text-gray-300">Menerima input berupa DFA kemudian diminimalisasi.</p>
+                <a href="minimasi_dfa.html" class="mt-4 bg-yellow-500 text-white font-semibold py-2 px-4 rounded hover:bg-yellow-600 transition">Pilih</a>
+            </div>
+            <div class="bg-gray-800 rounded-lg shadow-lg transition-transform transform hover:scale-105 hover:shadow-xl p-6 flex flex-col h-full">
+                <div class="flex justify-center mb-4">
+                    <i class="fas fa-balance-scale fa-5x text-purple-400"></i>
+                </div>
+                <h5 class="text-2xl font-semibold mb-2">Fungsi 4</h5>
+                <p class="flex-grow text-gray-300">Menerima input berupa 2 DFA lalu menunjukkan keduanya apakah equivalen.</p>
+                <a href="compare_dfa.html" class="mt-4 bg-purple-500 text-white font-semibold py-2 px-4 rounded hover:bg-purple-600 transition">Pilih</a>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
