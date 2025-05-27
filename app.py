@@ -1,4 +1,6 @@
 from flask import Flask, render_template, request, jsonify
+from function2 import State, regex_to_nfa
+import re
 
 app = Flask(__name__)
 app.secret_key = 'your-secret-key-here'
@@ -33,63 +35,32 @@ def dfa_test():
         return jsonify({'success': False, 'error': str(e)}), 400
 
 # ===== NFA & REGEX =====
-@app.route('/nfa-regex')
-def nfa_regex_page():
-    return render_template('nfa_regex.html')
+@app.route("/regex-nfa", methods=["GET", "POST"])
+def regex_nfa():
+    result = ""
+    transition_table = ""
+    test_result = ""
+    input_string = ""
 
-@app.route('/regex-to-nfa', methods=['POST'])
-def regex_to_nfa():
-    try:
-        data = request.get_json()
-        regex = data['regex']
-        
-        # Panggil fungsi convert regex ke NFA Anda
-        nfa = convert_regex_to_nfa(regex)  # Ganti dengan nama fungsi Anda
-        
-        return jsonify({
-            'success': True,
-            'nfa': nfa,
-            'message': f"Regex '{regex}' berhasil dikonversi ke NFA"
-        })
-    except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 400
+    if request.method == "POST":
+        State._id_counter = 0  # Reset ID state
+        regex = request.form.get("regex", "")
+        input_string = request.form.get("input_string", "")
 
-@app.route('/test-nfa', methods=['POST'])
-def test_nfa():
-    try:
-        data = request.get_json()
-        nfa_input = data['nfa']
-        test_string = data['string']
-        
-        # Panggil fungsi test NFA Anda
-        result = test_nfa_string(nfa_input, test_string)  # Ganti dengan nama fungsi Anda
-        
-        return jsonify({
-            'success': True,
-            'accepted': result['accepted'],
-            'trace': result.get('trace', []),
-            'message': f"String '{test_string}' {'diterima' if result['accepted'] else 'ditolak'}"
-        })
-    except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 400
+        try:
+            nfa = regex_to_nfa(regex)
+            transition_table = nfa.transition_table_str()
+            nfa_match = nfa.process_input(input_string)
+            regex_match = bool(re.fullmatch(regex, input_string))
 
-@app.route('/test-regex', methods=['POST'])
-def test_regex():
-    try:
-        data = request.get_json()
-        regex = data['regex']
-        test_string = data['string']
-        
-        # Panggil fungsi test regex Anda
-        result = test_regex_string(regex, test_string)  # Ganti dengan nama fungsi Anda
-        
-        return jsonify({
-            'success': True,
-            'accepted': result,
-            'message': f"String '{test_string}' {'cocok' if result else 'tidak cocok'} dengan regex '{regex}'"
-        })
-    except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 400
+            test_result = f"""
+            Regex match: {'Diterima' if regex_match else 'Ditolak'}<br>
+            NFA match  : {'Diterima' if nfa_match else 'Ditolak'}
+            """
+        except Exception as e:
+            result = f"Terjadi error: {e}"
+
+    return render_template("regex_nfa.html", transition_table=transition_table, test_result=test_result, input_string=input_string)
 
 # ===== DFA MINIMIZATION =====
 @app.route('/dfa-minimize')
