@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Regex to NFA</title>
+</head>
+<body>
+    <h2>Konversi REGEX ke NFA</h2>
+    <form method="POST">
+        <label>Masukkan REGEX:</label><br>
+        <input type="text" name="regex" required><br><br>
+
+        <label>Masukkan string uji:</label><br>
+        <input type="text" name="input_string"><br><br>
+
+        <input type="submit" value="Proses">
+    </form>
+
+    {% if transition_table %}
+        <h3>Hasil Konversi</h3>
+        <pre>{{ transition_table }}</pre>
+    {% endif %}
+
+    {% if test_result %}
+        <h3>Hasil Pengujian String</h3>
+        <p>{{ test_result|safe }}</p>
+    {% endif %}
+</body>
+</html>
