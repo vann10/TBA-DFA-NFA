@@ -1,5 +1,5 @@
 from flask import Flask, render_template, request, jsonify
-from function2 import State, regex_to_nfa
+from models.function2 import State, regex_to_nfa
 import re
 from models.function4 import compare_dfas
 import json
@@ -15,7 +15,7 @@ def index():
 # ===== DFA TESTING =====
 @app.route('/dfa-test')
 def dfa_test_page():
-    return render_template('dfa_test.html')
+    return render_template('tes_dfa.html')
 
 @app.route('/dfa-test', methods=['POST'])
 def dfa_test():
@@ -37,6 +37,10 @@ def dfa_test():
         return jsonify({'success': False, 'error': str(e)}), 400
 
 # ===== NFA & REGEX =====
+@app.route('/regex-nfa')  
+def regex_nfa_page():
+    return render_template('regex_nfa.html')
+
 @app.route("/regex-nfa", methods=["GET", "POST"])
 def regex_nfa():
     result = ""
