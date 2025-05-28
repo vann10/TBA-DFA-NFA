@@ -1,4 +1,6 @@
 from flask import Flask, render_template, request, jsonify
+from models.function4 import compare_dfas
+import json
 
 app = Flask(__name__)
 app.secret_key = 'your-secret-key-here'
@@ -128,18 +130,21 @@ def dfa_compare_page():
 def dfa_compare():
     try:
         data = request.get_json()
-        dfa1 = data['dfa1']
-        dfa2 = data['dfa2']
         
-        # Panggil fungsi compare DFA Anda
-        result = compare_dfas(dfa1, dfa2)  # Ganti dengan nama fungsi Anda
+        # Parsing yang benar
+        dfa1 = json.loads(data['dfa1'])  # Ini sudah string JSON
+        dfa2 = json.loads(data['dfa2'])
+        
+        result = compare_dfas(dfa1, dfa2)
         
         return jsonify({
             'success': True,
             'equivalent': result['equivalent'],
-            'details': result.get('details', {}),
-            'message': f"DFA 1 dan DFA 2 {'equivalent' if result['equivalent'] else 'tidak equivalent'}"
+            'details': result['details'],  # Pastikan ini ada
+            'message': f"DFA comparison completed"
         })
+    except json.JSONDecodeError as e:
+        return jsonify({'success': False, 'error': f'Invalid JSON: {str(e)}'}), 400
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 400
 

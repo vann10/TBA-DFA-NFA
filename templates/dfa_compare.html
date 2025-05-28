@@ -1,0 +1,361 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>DFA Comparison Tool</title>
+  <script src="https://unpkg.com/lucide@latest/dist/css/lucide.min.css"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/mermaid/10.6.1/mermaid.min.js"></script>
+</head>
+
+<body class="min-h-screen bg-gradient-to-br from-indigo-400 to-purple-600 p-5 font-sans">
+  <div class="max-w-6xl mx-auto bg-white/90 rounded-2xl p-8 shadow-2xl backdrop-blur">
+    <h1 class="text-4xl font-bold text-center p-5">
+      <div class="icon-align-horizontal-justify-center">
+        Bandingkan DFA Yuk
+      </div>
+    </h1>
+      <div class="icon-align-horizontal-justify-center">
+
+
+    <form id="compareForm">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+        <div class="bg-gray-50 border border-gray-200 rounded-xl p-6 shadow hover:border-indigo-400 hover:-translate-y-1 transition">
+          <h3 class="text-lg font-semibold text-gray-700 mb-4">🔵 DFA 1</h3>
+          <div class="mb-4">
+            <label for="states1" class="block font-medium text-gray-600 mb-1">States (pisahkan dengan koma):</label>
+            <input type="text" id="states1" class="w-full p-3 border rounded-md font-mono" placeholder="q0,q1,q2" required />
+          </div>
+          <div class="mb-4">
+            <label for="alphabet1" class="block font-medium text-gray-600 mb-1">Alfabet (pisahkan dengan koma):</label>
+            <input type="text" id="alphabet1" class="w-full p-3 border rounded-md font-mono" placeholder="a,b" required />
+          </div>
+          <div class="mb-4">
+            <label for="start1" class="block font-medium text-gray-600 mb-1">Start State:</label>
+            <input type="text" id="start1" class="w-full p-3 border rounded-md font-mono" placeholder="q0" required />
+          </div>
+          <div class="mb-4">
+            <label for="accept1" class="block font-medium text-gray-600 mb-1">Accept States (pisahkan dengan koma):</label>
+            <input type="text" id="accept1" class="w-full p-3 border rounded-md font-mono" placeholder="q2" />
+          </div>
+          <div>
+            <label for="delta1" class="block font-medium text-gray-600 mb-1">Transisi (format: state alfabet next_state):</label>
+            <textarea id="delta1" class="w-full p-3 border rounded-md font-mono h-32 resize-y" placeholder='{"q0":{"a":"q1","b":"q0"},"q1":{"a":"q2","b":"q1"},"q2":{"a":"q2","b":"q2"}}' required></textarea>
+          </div>
+        </div>
+
+        <div class="bg-gray-50 border border-gray-200 rounded-xl p-6 shadow hover:border-indigo-400 hover:-translate-y-1 transition">
+          <h3 class="text-lg font-semibold text-gray-700 mb-4">🟢 DFA 2</h3>
+          <div class="mb-4">
+            <label for="states2" class="block font-medium text-gray-600 mb-1">States (pisahkan dengan koma):</label>
+            <input type="text" id="states2" class="w-full p-3 border rounded-md font-mono" placeholder="p0,p1,p2" required />
+          </div>
+          <div class="mb-4">
+            <label for="alphabet2" class="block font-medium text-gray-600 mb-1">Alfabet (pisahkan dengan koma):</label>
+            <input type="text" id="alphabet2" class="w-full p-3 border rounded-md font-mono" placeholder="a,b" required />
+          </div>
+          <div class="mb-4">
+            <label for="start2" class="block font-medium text-gray-600 mb-1">Start State:</label>
+            <input type="text" id="start2" class="w-full p-3 border rounded-md font-mono" placeholder="p0" required />
+          </div>
+          <div class="mb-4">
+            <label for="accept2" class="block font-medium text-gray-600 mb-1">Accept States (pisahkan dengan koma):</label>
+            <input type="text" id="accept2" class="w-full p-3 border rounded-md font-mono" placeholder="p2" />
+          </div>
+          <div>
+            <label for="delta2" class="block font-medium text-gray-600 mb-1">Transisi (format: state alfabet next_state):</label>
+            <textarea id="delta2" class="w-full p-3 border rounded-md font-mono h-32 resize-y" placeholder='{"p0":{"a":"p1","b":"p0"},"p1":{"a":"p2","b":"p1"},"p2":{"a":"p2","b":"p2"}}' required></textarea>
+          </div>
+        </div>
+      </div>
+
+      <button id="compareBtn" type="submit" class="block mx-auto bg-gradient-to-r from-indigo-400 to-purple-500 text-white py-3 px-8 rounded-full font-semibold uppercase tracking-wide hover:shadow-xl hover:-translate-y-1 transition disabled:opacity-50">
+        Compare DFAs
+      </button>
+    </form>
+
+    <div id="error" class="hidden bg-red-100 text-red-700 border border-red-300 p-4 rounded-lg mt-6"></div>
+
+    <div id="result" class="hidden mt-10">
+      <div id="equivalenceResult" class="text-center text-lg font-semibold p-4 rounded-xl mb-6"></div>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div class="bg-gray-50 border border-gray-200 rounded-xl p-6 shadow">
+          <h4 class="text-center font-semibold text-gray-700 mb-4">🔵 Detail dari DFA 1</h4>
+          <pre id="table1" class="bg-white rounded p-4 text-sm font-mono mb-4 shadow-inner"></pre>
+          <div id="diagram1" class="bg-white rounded p-4 min-h-[300px] shadow-inner"></div>
+        </div>
+        <div class="bg-gray-50 border border-gray-200 rounded-xl p-6 shadow">
+          <h4 class="text-center font-semibold text-gray-700 mb-4">🟢 Detail dari DFA 2</h4>
+          <pre id="table2" class="bg-white rounded p-4 text-sm font-mono mb-4 shadow-inner"></pre>
+          <div id="diagram2" class="bg-white rounded p-4 min-h-[300px] shadow-inner"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    mermaid.initialize({ startOnLoad: true, theme: 'default', securityLevel: 'loose' });
+    
+    document.getElementById('compareForm').addEventListener('submit', async function(e) {
+      e.preventDefault();
+      const btn = document.getElementById('compareBtn');
+      const error = document.getElementById('error');
+      const result = document.getElementById('result');
+      btn.disabled = true;
+      btn.textContent = 'Comparing...';
+      error.classList.add('hidden');
+      result.classList.add('hidden');
+
+      function parseTransitions(text) {
+        const lines = text.trim().split('\n');
+        const delta = {};
+        for (let line of lines) {
+          const [state, symbol, next] = line.trim().split(/\s+/);
+          if (!state || !symbol || !next) continue;
+          if (!delta[state]) delta[state] = {};
+          delta[state][symbol] = next;
+        }
+        return delta;
+      }
+
+      try {
+        const dfa1 = {
+          states: document.getElementById('states1').value.split(',').map(s => s.trim()),
+          alphabet: document.getElementById('alphabet1').value.split(',').map(s => s.trim()),
+          start: document.getElementById('start1').value.trim(),
+          accept: document.getElementById('accept1').value.split(',').map(s => s.trim()).filter(Boolean),
+          delta: (() => {
+            const raw = document.getElementById('delta1').value;
+            try {
+              return JSON.parse(raw);
+            } catch {
+              return parseTransitions(raw);
+            }
+          })()
+        };
+
+        const dfa2 = {
+          states: document.getElementById('states2').value.split(',').map(s => s.trim()),
+          alphabet: document.getElementById('alphabet2').value.split(',').map(s => s.trim()),
+          start: document.getElementById('start2').value.trim(),
+          accept: document.getElementById('accept2').value.split(',').map(s => s.trim()).filter(Boolean),
+          delta: (() => {
+            const raw = document.getElementById('delta2').value;
+            try {
+              return JSON.parse(raw);
+            } catch {
+              return parseTransitions(raw);
+            }
+          })()
+        };
+
+        const response = await fetch('/dfa-compare', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ dfa1: JSON.stringify(dfa1), dfa2: JSON.stringify(dfa2) })
+        });
+
+        const resultJson = await response.json();
+        
+        // Display equivalence result
+        const eqDiv = document.getElementById('equivalenceResult');
+        if (resultJson.success) {
+          if (resultJson.equivalent) {
+            eqDiv.className = "text-center text-lg font-semibold p-4 rounded-xl mb-6 bg-gradient-to-r from-blue-400 to-cyan-400 text-white";
+            eqDiv.textContent = '✅ The DFAs are EQUIVALENT!';
+          } else {
+            eqDiv.className = "text-center text-lg font-semibold p-4 rounded-xl mb-6 bg-gradient-to-r from-pink-400 to-yellow-400 text-white";
+            eqDiv.textContent = '❌ The DFAs are NOT EQUIVALENT!';
+          }
+
+          // Display method results
+          if (document.getElementById('methodResults')) {
+            document.getElementById('methodResults').innerHTML = `
+              <div class="bg-gray-100 p-4 rounded-lg">
+                <h3 class="font-semibold mb-2">Comparison Methods:</h3>
+                <p>Method 1 (Minimization): ${resultJson.method1_result ? '✅ Equivalent' : '❌ Not Equivalent'}</p>
+                <p>Method 2 (Table Filling): ${resultJson.method2_result ? '✅ Equivalent' : '❌ Not Equivalent'}</p>
+              </div>
+            `;
+          }
+
+          // Display original DFA 1 information
+          if (document.getElementById('originalTable1')) {
+            document.getElementById('originalTable1').textContent = resultJson.details.original_transition1;
+          }
+          if (document.getElementById('originalTable2')) {
+            document.getElementById('originalTable2').textContent = resultJson.details.original_transition2;
+          }
+
+          // Display minimized DFA information
+          if (document.getElementById('minimizedTable1')) {
+            document.getElementById('minimizedTable1').textContent = resultJson.details.minimized_transition1;
+          }
+          if (document.getElementById('minimizedTable2')) {
+            document.getElementById('minimizedTable2').textContent = resultJson.details.minimized_transition2;
+          }
+
+          // Render original diagrams
+          if (resultJson.details.original_diagram1) {
+            mermaid.render('original-diagram1-svg', resultJson.details.original_diagram1).then(({ svg }) => {
+              if (document.getElementById('originalDiagram1')) {
+                document.getElementById('originalDiagram1').innerHTML = svg;
+              }
+            });
+          }
+
+          if (resultJson.details.original_diagram2) {
+            mermaid.render('original-diagram2-svg', resultJson.details.original_diagram2).then(({ svg }) => {
+              if (document.getElementById('originalDiagram2')) {
+                document.getElementById('originalDiagram2').innerHTML = svg;
+              }
+            });
+          }
+
+          // Render minimized diagrams
+          if (resultJson.details.minimized_diagram1) {
+            mermaid.render('minimized-diagram1-svg', resultJson.details.minimized_diagram1).then(({ svg }) => {
+              if (document.getElementById('minimizedDiagram1')) {
+                document.getElementById('minimizedDiagram1').innerHTML = svg;
+              }
+            });
+          }
+
+          if (resultJson.details.minimized_diagram2) {
+            mermaid.render('minimized-diagram2-svg', resultJson.details.minimized_diagram2).then(({ svg }) => {
+              if (document.getElementById('minimizedDiagram2')) {
+                document.getElementById('minimizedDiagram2').innerHTML = svg;
+              }
+            });
+          }
+
+          // Display state count information
+          if (document.getElementById('stateInfo')) {
+            const stateInfo = `
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                <div class="bg-blue-50 p-4 rounded-lg">
+                  <h4 class="font-semibold text-blue-800">DFA 1 State Analysis</h4>
+                  <p>Original states: ${resultJson.details.dfa1_state_count}</p>
+                  <p>Minimized states: ${resultJson.details.min_dfa1_state_count}</p>
+                  <p>States removed: ${resultJson.details.dfa1_state_count - resultJson.details.min_dfa1_state_count}</p>
+                </div>
+                <div class="bg-green-50 p-4 rounded-lg">
+                  <h4 class="font-semibold text-green-800">DFA 2 State Analysis</h4>
+                  <p>Original states: ${resultJson.details.dfa2_state_count}</p>
+                  <p>Minimized states: ${resultJson.details.min_dfa2_state_count}</p>
+                  <p>States removed: ${resultJson.details.dfa2_state_count - resultJson.details.min_dfa2_state_count}</p>
+                </div>
+              </div>
+            `;
+            document.getElementById('stateInfo').innerHTML = stateInfo;
+          }
+
+          // Backward compatibility - keep original behavior
+          if (document.getElementById('table1')) {
+            document.getElementById('table1').textContent = resultJson.details.original_transition1 || resultJson.details.transition1;
+          }
+          if (document.getElementById('table2')) {
+            document.getElementById('table2').textContent = resultJson.details.original_transition2 || resultJson.details.transition2;
+          }
+
+          // Render main diagrams (for backward compatibility)
+          const diagram1Data = resultJson.details.original_diagram1 || resultJson.details.diagram1;
+          const diagram2Data = resultJson.details.original_diagram2 || resultJson.details.diagram2;
+
+          if (diagram1Data && document.getElementById('diagram1')) {
+            mermaid.render('diagram1-svg', diagram1Data).then(({ svg }) => {
+              document.getElementById('diagram1').innerHTML = svg;
+            });
+          }
+
+          if (diagram2Data && document.getElementById('diagram2')) {
+            mermaid.render('diagram2-svg', diagram2Data).then(({ svg }) => {
+              document.getElementById('diagram2').innerHTML = svg;
+            });
+          }
+
+          result.classList.remove('hidden');
+        } else {
+          throw new Error(resultJson.error);
+        }
+      } catch (err) {
+        error.textContent = "Error: " + err.message;
+        error.classList.remove('hidden');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Compare DFAs';
+      }
+    });
+
+    // Toggle between original and minimized view
+    function toggleView(dfaNumber) {
+      const originalSection = document.getElementById(`originalSection${dfaNumber}`);
+      const minimizedSection = document.getElementById(`minimizedSection${dfaNumber}`);
+      const toggleBtn = document.getElementById(`toggleBtn${dfaNumber}`);
+      
+      if (originalSection && minimizedSection && toggleBtn) {
+        if (originalSection.classList.contains('hidden')) {
+          // Show original, hide minimized
+          originalSection.classList.remove('hidden');
+          minimizedSection.classList.add('hidden');
+          toggleBtn.textContent = 'Show Minimized';
+        } else {
+          // Show minimized, hide original
+          originalSection.classList.add('hidden');
+          minimizedSection.classList.remove('hidden');
+          toggleBtn.textContent = 'Show Original';
+        }
+      }
+    }
+
+    // Make toggle function available globally
+    window.toggleView = toggleView;
+
+    // Auto-format JSON on blur
+    ['delta1', 'delta2'].forEach(id => {
+      document.getElementById(id).addEventListener('blur', function() {
+        try {
+          const parsed = JSON.parse(this.value);
+          this.value = JSON.stringify(parsed, null, 2);
+        } catch (e) {}
+      });
+    });
+
+    // Helper function to create collapsible sections
+    function createCollapsibleSection(title, content, isOpen = false) {
+      return `
+        <div class="border border-gray-200 rounded-lg mb-4">
+          <button class="w-full text-left p-4 bg-gray-50 hover:bg-gray-100 flex justify-between items-center" 
+                  onclick="toggleCollapsible(this)">
+            <span class="font-semibold">${title}</span>
+            <span class="transform transition-transform ${isOpen ? 'rotate-180' : ''}"">▼</span>
+          </button>
+          <div class="p-4 ${isOpen ? '' : 'hidden'}">
+            ${content}
+          </div>
+        </div>
+      `;
+    }
+
+    // Toggle collapsible sections
+    function toggleCollapsible(button) {
+      const content = button.nextElementSibling;
+      const arrow = button.querySelector('span:last-child');
+      
+      if (content.classList.contains('hidden')) {
+        content.classList.remove('hidden');
+        arrow.classList.add('rotate-180');
+      } else {
+        content.classList.add('hidden');
+        arrow.classList.remove('rotate-180');
+      }
+    }
+
+    // Make function available globally
+    window.toggleCollapsible = toggleCollapsible;
+</script>
+</body>
+</html>
