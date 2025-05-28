@@ -12,6 +12,18 @@ app.secret_key = 'your-secret-key-here'
 def index():
     return render_template('index.html')
 
+@app.route('/create')
+def create_dfa():
+    return render_template('create.html')
+
+@app.route('/test')
+def test_dfa():
+    return render_template('test.html')
+
+@app.route('/history')
+def history():
+    return render_template('history.html')
+
 # ===== DFA TESTING =====
 @app.route('/dfa-test')
 def dfa_test_page():

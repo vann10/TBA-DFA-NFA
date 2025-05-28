@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DFA Tester - Web Version</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand" href="/">DFA Tester</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav">
+                    <li class="nav-item">
+                        <a class="nav-link active" href="/">Beranda</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/create">Buat DFA</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/test">Uji DFA</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/history">Riwayat</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <div class="jumbotron bg-light p-5 rounded">
+            <h1 class="display-4">DFA Tester Web App</h1>
+            <p class="lead">Aplikasi web untuk membuat, menguji, dan memvisualisasikan DFA (Deterministic Finite Automaton).</p>
+            <hr class="my-4">
+            <p>DFA adalah model komputasi matematika yang digunakan dalam teori bahasa formal dan automata. DFA terdiri dari states, alfabet, fungsi transisi, state awal, dan state penerima.</p>
+            <div class="d-flex gap-2 mt-4">
+                <a href="/create" class="btn btn-primary btn-lg">Buat DFA Baru</a>
+                <a href="/test" class="btn btn-success btn-lg">Uji DFA</a>
+            </div>
+        </div>
+
+        <div class="row mt-5">
+            <div class="col-md-4">
+                <div class="card mb-4">
+                    <div class="card-body">
+                        <h5 class="card-title">Buat DFA</h5>
+                        <p class="card-text">Buat DFA baru dengan mendefinisikan states, alfabet, state awal, state penerima, dan fungsi transisi.</p>
+                        <a href="/create" class="btn btn-primary">Buat DFA</a>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card mb-4">
+                    <div class="card-body">
+                        <h5 class="card-title">Uji DFA</h5>
+                        <p class="card-text">Uji string input pada DFA yang telah dibuat dan lihat apakah string tersebut diterima atau ditolak.</p>
+                        <a href="/test" class="btn btn-success">Uji DFA</a>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card mb-4">
+                    <div class="card-body">
+                        <h5 class="card-title">Riwayat</h5>
+                        <p class="card-text">Lihat riwayat pengujian DFA yang telah dilakukan sebelumnya.</p>
+                        <a href="/history" class="btn btn-info">Lihat Riwayat</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="row mt-4">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title">Apa itu DFA?</h5>
+                        <p class="card-text">
+                            Deterministic Finite Automaton (DFA) adalah model komputasi yang terdiri dari:
+                        </p>
+                        <ul>
+                            <li><strong>Q</strong>: Himpunan states</li>
+                            <li><strong>Σ</strong>: Alfabet (himpunan simbol input)</li>
+                            <li><strong>δ</strong>: Fungsi transisi (Q × Σ → Q)</li>
+                            <li><strong>q<sub>0</sub></strong>: State awal (q<sub>0</sub> ∈ Q)</li>
+                            <li><strong>F</strong>: Himpunan state penerima (F ⊆ Q)</li>
+                        </ul>
+                        <p>DFA dapat menerima atau menolak string input berdasarkan apakah proses komputasi berakhir di state penerima atau tidak.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title">Fitur Aplikasi</h5>
+                        <ul class="list-group">
+                            <li class="list-group-item d-flex align-items-center">
+                                <span class="badge bg-primary rounded-pill me-2">1</span>
+                                Pembuatan DFA dengan antarmuka yang intuitif
+                            </li>
+                            <li class="list-group-item d-flex align-items-center">
+                                <span class="badge bg-primary rounded-pill me-2">2</span>
+                                Pengujian string input pada DFA
+                            </li>
+                            <li class="list-group-item d-flex align-items-center">
+                                <span class="badge bg-primary rounded-pill me-2">3</span>
+                                Visualisasi DFA dengan diagram state
+                            </li>
+                            <li class="list-group-item d-flex align-items-center">
+                                <span class="badge bg-primary rounded-pill me-2">4</span>
+                                Simulasi langkah-demi-langkah proses komputasi
+                            </li>
+                            <li class="list-group-item d-flex align-items-center">
+                                <span class="badge bg-primary rounded-pill me-2">5</span>
+                                Penyimpanan riwayat pengujian
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer class="bg-dark text-white mt-5 py-3">
+        <div class="container text-center">
+            <p class="mb-0">DFA Tester Web App &copy; 2023</p>
+        </div>
+    </footer>
+
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html> 
