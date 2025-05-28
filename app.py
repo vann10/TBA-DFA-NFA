@@ -83,7 +83,7 @@ def regex_nfa():
 # ===== DFA MINIMIZATION =====
 @app.route('/dfa-minimize')
 def dfa_minimize_page():
-    return render_template('dfa_minimize.html')
+    return render_template('minimasi_dfa.html')
 
 @app.route('/dfa-minimize', methods=['POST'])
 def dfa_minimize():
@@ -91,17 +91,22 @@ def dfa_minimize():
         data = request.get_json()
         dfa_input = data['dfa']
         
-        # Panggil fungsi minimize DFA Anda
-        result = minimize_dfa(dfa_input)  # Ganti dengan nama fungsi Anda
+        # Import and use the minimize_dfa function from function3
+        from models.function3 import minimize_dfa
+        result = minimize_dfa(dfa_input)
+        
+        # Get the number of states for statistics
+        original_states = len(dfa_input['states'])
+        minimized_states = len(result['states']) if isinstance(result, dict) else len(result.states)
         
         return jsonify({
             'success': True,
             'original_dfa': dfa_input,
-            'minimized_dfa': result['minimized'],
+            'minimized_dfa': result,
             'reduction_info': {
-                'original_states': result['original_states'],
-                'minimized_states': result['minimized_states'],
-                'states_removed': result['original_states'] - result['minimized_states']
+                'original_states': original_states,
+                'minimized_states': minimized_states,
+                'states_removed': original_states - minimized_states
             },
             'message': 'DFA berhasil diminimalisasi'
         })
