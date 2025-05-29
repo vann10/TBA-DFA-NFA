@@ -174,48 +174,62 @@ def handle_regex():
 # ===== DFA MINIMIZATION =====
 @app.route('/dfa-minimize')
 def dfa_minimize_page():
-    return render_template('dfa_minimize.html')
+    return render_template('minimasi_dfa.html')
 
 @app.route('/dfa-minimize', methods=['POST'])
 def dfa_minimize():
     try:
         data = request.get_json()
-
-        # Validasi input data
-        if not data or 'dfa' not in data:
-            return jsonify({'success': False, 'error': 'Missing DFA data'}), 400
-
         dfa_input = data['dfa']
-
-        # Parse DFA jika dalam bentuk string JSON
-        if isinstance(dfa_input, str):
-            try:
-                dfa_input = json.loads(dfa_input)
-            except json.JSONDecodeError as e:
-                return jsonify({'success': False, 'error': f'Invalid JSON format: {str(e)}'}), 400
-
-        # Validasi struktur DFA
-        if not validate_dfa_input(dfa_input):
-            return jsonify({'success': False, 'error': 'Invalid DFA structure. Required: states, alphabet, transitions, start_state, accept_states'}), 400
-
-        # Panggil fungsi minimize DFA
-        result = minimize_dfa(dfa_input)
-
+        
+        # Import and use the minimize_dfa function from function3
+        from models.function3 import minimize_dfa
+        minimized_result = minimize_dfa(dfa_input)
+        
+        # Get the number of states for statistics
+        original_states = len(dfa_input['states'])
+        minimized_states = len(minimized_result['states'])
+        
         return jsonify({
             'success': True,
             'original_dfa': dfa_input,
-            'minimized_dfa': result['minimized'],
+            'minimized_dfa': minimized_result,  # This now contains the correct format
             'reduction_info': {
-                'original_states': result['original_states'],
-                'minimized_states': result['minimized_states'],
-                'states_removed': result['original_states'] - result['minimized_states'],
-                'reduction_percentage': result.get('reduction_percentage', 0)
+                'original_states': original_states,
+                'minimized_states': minimized_states,
+                'states_removed': original_states - minimized_states
             },
-            'message': f'DFA berhasil diminimalisasi dari {result["original_states"]} state menjadi {result["minimized_states"]} state'
+            'message': 'DFA berhasil diminimalisasi'
         })
-
     except Exception as e:
-        return jsonify({'success': False, 'error': f'Minimization error: {str(e)}'}), 500
+        return jsonify({'success': False, 'error': str(e)}), 400
+    
+# ===== DFA COMPARISON =====
+@app.route('/dfa-compare')  
+def dfa_compare_page():
+    return render_template('dfa_compare.html')
+
+@app.route('/dfa-compare', methods=['POST'])
+def dfa_compare():
+    try:
+        data = request.get_json()
+        
+        # Parsing yang benar
+        dfa1 = json.loads(data['dfa1'])  # Ini sudah string JSON
+        dfa2 = json.loads(data['dfa2'])
+        
+        result = compare_dfas(dfa1, dfa2)
+        
+        return jsonify({
+            'success': True,
+            'equivalent': result['equivalent'],
+            'details': result['details'],  # Pastikan ini ada
+            'message': f"DFA comparison completed"
+        })
+    except json.JSONDecodeError as e:
+        return jsonify({'success': False, 'error': f'Invalid JSON: {str(e)}'}), 400
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 400
 
 # ===== DFA COMPARISON =====
 @app.route('/dfa-compare')  
