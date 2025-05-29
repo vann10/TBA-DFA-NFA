@@ -165,10 +165,10 @@
         if (resultJson.success) {
           if (resultJson.equivalent) {
             eqDiv.className = "text-center text-lg font-semibold p-4 rounded-xl mb-6 bg-gradient-to-r from-blue-400 to-cyan-400 text-white";
-            eqDiv.textContent = '✅ The DFAs are EQUIVALENT!';
+            eqDiv.textContent = '✅ Kedua DFA tersebut Ekuivalen!';
           } else {
             eqDiv.className = "text-center text-lg font-semibold p-4 rounded-xl mb-6 bg-gradient-to-r from-pink-400 to-yellow-400 text-white";
-            eqDiv.textContent = '❌ The DFAs are NOT EQUIVALENT!';
+            eqDiv.textContent = '❌ Kedua DFA tersebut Tidak Ekuivalen!';
           }
 
           // Display method results
@@ -286,7 +286,7 @@
         error.classList.remove('hidden');
       } finally {
         btn.disabled = false;
-        btn.textContent = 'Compare DFAs';
+        btn.textContent = 'Bandingkan DFA';
       }
     });
 

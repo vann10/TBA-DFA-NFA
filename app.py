@@ -1,6 +1,6 @@
 from flask import Flask, render_template, request, jsonify
 from models.function2 import State, regex_to_nfa
-from models.function3 import minimize_dfa, validate_dfa_input  # Import fungsi yang sudah diperbaiki
+from models.function3 import minimize_dfa
 import re
 from models.function4 import compare_dfas
 import json
@@ -195,12 +195,6 @@ def dfa_compare():
                 dfa2 = data['dfa2']
         except json.JSONDecodeError as e:
             return jsonify({'success': False, 'error': f'Invalid JSON: {str(e)}'}), 400
-        
-        # Validasi struktur DFA
-        if not validate_dfa_input(dfa1):
-            return jsonify({'success': False, 'error': 'Invalid structure for DFA 1'}), 400
-        if not validate_dfa_input(dfa2):
-            return jsonify({'success': False, 'error': 'Invalid structure for DFA 2'}), 400
         
         result = compare_dfas(dfa1, dfa2)
         
