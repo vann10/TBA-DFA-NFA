@@ -1,3 +1,5 @@
+from graphviz import Digraph
+
 class State:
     _id_counter = 0
 
@@ -141,3 +143,27 @@ def regex_to_nfa(regex):
 
     tokens = list(regex)
     return parse_expr(tokens)
+
+def visualize_nfa(nfa):
+    dot = Digraph(format='png')
+    dot.attr(rankdir='LR')
+
+    states = nfa.get_all_states()
+
+    for state in states:
+        if state == nfa.accept:
+            dot.node(state.id, shape='doublecircle')
+        else:
+            dot.node(state.id, shape='circle')
+
+    dot.node("", shape="none")
+    dot.edge("", nfa.start.id)
+
+    for state in states:
+        for symbol, to_states in state.transitions.items():
+            for to_state in to_states:
+                dot.edge(state.id, to_state.id, label=symbol)
+        for to_state in state.epsilon:
+            dot.edge(state.id, to_state.id, label="ε")
+
+    return dot
