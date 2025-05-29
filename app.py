@@ -129,6 +129,27 @@ def regex_nfa():
 
     return render_template("regex_nfa.html", transition_table=transition_table, test_result=test_result, input_string=input_string, nfa_image=nfa_image_path)
 
+@app.route("/regex", methods=["POST"])
+def handle_regex():
+    data = request.get_json()
+    regex = data.get("regex")
+    string = data.get("string")
+
+    try:
+        nfa = regex_to_nfa(regex)
+        result = nfa.process_input(string)
+        table = nfa.transition_table_str()
+        image_path = visualize_nfa(nfa)  # Simpan ke static/nfa_diagram.png
+
+        return jsonify({
+            "result": result,
+            "table": table,
+            "image_url": "/static/nfa_diagram.png"
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 400
+
+
 # ===== DFA MINIMIZATION =====
 @app.route('/dfa-minimize')
 def dfa_minimize_page():
