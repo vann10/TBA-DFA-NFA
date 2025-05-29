@@ -1,328 +1,307 @@
-# ===== PINDAHKAN SEMUA FUNGSI MINIMIZATION ANDA KE SINI =====
-
-from typing import Dict, List, Set, Tuple, Optional
-
-class DFA:
-    """Represents a Deterministic Finite Automaton"""
-    
-    def __init__(self, states: List[str], alphabet: List[str], 
-                 transitions: Dict[str, Dict[str, str]], 
-                 start_state: str, final_states: List[str]):
-        self.states = set(states)
-        self.alphabet = set(alphabet)
-        self.transitions = transitions
-        self.start_state = start_state
-        self.final_states = set(final_states)
-        
-        # Validate DFA
-        self._validate()
-    
-    def _validate(self):
-        """Validate the DFA structure"""
-        if self.start_state not in self.states:
-            raise ValueError(f"Start state '{self.start_state}' not in states")
-        
-        for final_state in self.final_states:
-            if final_state not in self.states:
-                raise ValueError(f"Final state '{final_state}' not in states")
-
-class DFAMinimizer:
-    """Class for minimizing DFA using partition refinement algorithm"""
-    
-    def __init__(self, dfa: DFA):
-        self.original_dfa = dfa
-        self.state_mapping = {}
-    
-    def find_reachable_states(self) -> Set[str]:
-        """Find all reachable states from start state"""
-        reachable = set()
-        queue = [self.original_dfa.start_state]
-        reachable.add(self.original_dfa.start_state)
-        
-        while queue:
-            current_state = queue.pop(0)
-            for symbol in self.original_dfa.alphabet:
-                if (current_state in self.original_dfa.transitions and 
-                    symbol in self.original_dfa.transitions[current_state]):
-                    next_state = self.original_dfa.transitions[current_state][symbol]
-                    if next_state not in reachable:
-                        reachable.add(next_state)
-                        queue.append(next_state)
-        
-        return reachable
-    
-    def create_initial_partition(self, reachable_states: Set[str]) -> List[List[str]]:
-        """Create initial partition (final vs non-final states)"""
-        final_states = reachable_states & self.original_dfa.final_states
-        non_final_states = reachable_states - self.original_dfa.final_states
-        
-        partitions = []
-        if non_final_states:
-            partitions.append(list(non_final_states))
-        if final_states:
-            partitions.append(list(final_states))
-        
-        return partitions
-    
-    def are_states_equivalent(self, state1: str, state2: str, 
-                            partitions: List[List[str]]) -> bool:
-        """Check if two states are equivalent based on current partition"""
-        for symbol in self.original_dfa.alphabet:
-            next1 = self.original_dfa.transitions.get(state1, {}).get(symbol)
-            next2 = self.original_dfa.transitions.get(state2, {}).get(symbol)
-            
-            if next1 is None or next2 is None:
-                if next1 != next2:
-                    return False
-                continue
-            
-            # Find partition for each next state
-            partition1 = self.find_partition_for_state(next1, partitions)
-            partition2 = self.find_partition_for_state(next2, partitions)
-            
-            if partition1 != partition2:
-                return False
-        
-        return True
-    
-    def find_partition_for_state(self, state: str, partitions: List[List[str]]) -> int:
-        """Find which partition contains the given state"""
-        for i, partition in enumerate(partitions):
-            if state in partition:
-                return i
-        return -1
-    
-    def refine_partitions(self, partitions: List[List[str]]) -> List[List[str]]:
-        """Refine partitions until no changes occur"""
-        changed = True
-        
-        while changed:
-            changed = False
-            new_partitions = []
-            
-            for partition in partitions:
-                if len(partition) <= 1:
-                    new_partitions.append(partition)
-                    continue
-                
-                # Create sub-partitions based on equivalence
-                sub_partitions = []
-                processed = set()
-                
-                for state in partition:
-                    if state in processed:
-                        continue
-                    
-                    equivalent_group = [state]
-                    processed.add(state)
-                    
-                    for other_state in partition:
-                        if other_state in processed:
-                            continue
-                        
-                        if self.are_states_equivalent(state, other_state, partitions):
-                            equivalent_group.append(other_state)
-                            processed.add(other_state)
-                    
-                    sub_partitions.append(equivalent_group)
-                
-                if len(sub_partitions) > 1:
-                    changed = True
-                
-                new_partitions.extend(sub_partitions)
-            
-            partitions = new_partitions
-        
-        return partitions
-    
-    def create_minimal_dfa(self, final_partitions: List[List[str]]) -> DFA:
-        """Create minimal DFA from final partitions"""
-        # Create mapping from old states to new states
-        for i, partition in enumerate(final_partitions):
-            new_state_name = f"q{i}"
-            for state in partition:
-                self.state_mapping[state] = new_state_name
-        
-        # New states
-        new_states = [f"q{i}" for i in range(len(final_partitions))]
-        
-        # New transitions
-        new_transitions = {}
-        for i, partition in enumerate(final_partitions):
-            representative = partition[0]  # Take representative from partition
-            new_state_name = f"q{i}"
-            new_transitions[new_state_name] = {}
-            
-            for symbol in self.original_dfa.alphabet:
-                if (representative in self.original_dfa.transitions and 
-                    symbol in self.original_dfa.transitions[representative]):
-                    next_state = self.original_dfa.transitions[representative][symbol]
-                    new_next_state = self.state_mapping[next_state]
-                    new_transitions[new_state_name][symbol] = new_next_state
-        
-        # New start state
-        new_start_state = self.state_mapping[self.original_dfa.start_state]
-        
-        # New final states
-        new_final_states = set()
-        for final_state in self.original_dfa.final_states:
-            if final_state in self.state_mapping:
-                new_final_states.add(self.state_mapping[final_state])
-        
-        minimal_dfa = DFA(new_states, list(self.original_dfa.alphabet), 
-                         new_transitions, new_start_state, list(new_final_states))
-        
-        return minimal_dfa
-    
-    def minimize(self) -> DFA:
-        """Main minimization process"""
-        # Step 1: Find reachable states
-        reachable_states = self.find_reachable_states()
-        
-        # Step 2: Create initial partition
-        partitions = self.create_initial_partition(reachable_states)
-        
-        # Step 3: Refine partitions
-        final_partitions = self.refine_partitions(partitions)
-        
-        # Step 4: Create minimal DFA
-        minimal_dfa = self.create_minimal_dfa(final_partitions)
-        
-        return minimal_dfa
+# ===== DFA MINIMIZATION FUNCTIONS =====
 
 def minimize_dfa(dfa_definition):
     """
-    Fungsi untuk minimize DFA
-    Input format expected:
-    {
-        'states': ['q0', 'q1', 'q2', ...],
-        'alphabet': ['a', 'b', ...],  
-        'transitions': {
-            'q0': {'a': 'q1', 'b': 'q2'},
-            'q1': {'a': 'q3', 'b': 'q4'},
-            ...
-        },
-        'start_state': 'q0',
-        'accept_states': ['q3', 'q4', ...]  # Note: might be 'final_states' in some formats
-    }
+    Fungsi untuk minimize DFA menggunakan algoritma table-filling
     """
     try:
-        # Handle different naming conventions for final states
-        final_states = dfa_definition.get('accept_states', 
-                                        dfa_definition.get('final_states', []))
+        # Validasi input DFA
+        if not validate_dfa_input(dfa_definition):
+            raise ValueError("Invalid DFA structure")
         
-        # Create DFA object
-        dfa = DFA(
-            states=dfa_definition['states'],
-            alphabet=dfa_definition['alphabet'],
-            transitions=dfa_definition['transitions'],
-            start_state=dfa_definition['start_state'],
-            final_states=final_states
+        states = dfa_definition['states']
+        alphabet = dfa_definition['alphabet']
+        transitions = dfa_definition['transitions']
+        start_state = dfa_definition['start_state']
+        accept_states = set(dfa_definition['accept_states'])
+        
+        # Jika hanya ada 1 state, tidak perlu diminimize
+        if len(states) <= 1:
+            return create_minimization_result(dfa_definition, dfa_definition, len(states), len(states))
+        
+        # Step 1: Hapus unreachable states
+        reachable_states = find_reachable_states(states, transitions, start_state, alphabet)
+        
+        # Step 2: Buat tabel untuk menandai pasangan state yang distinguishable
+        distinguishable = create_distinguishable_table(reachable_states, accept_states)
+        
+        # Step 3: Table-filling algorithm untuk mencari equivalent states
+        mark_distinguishable_states(distinguishable, reachable_states, transitions, alphabet)
+        
+        # Step 4: Grup equivalent states
+        equivalent_groups = find_equivalent_groups(distinguishable, reachable_states)
+        
+        # Step 5: Buat DFA yang sudah diminimize
+        minimized_dfa = build_minimized_dfa(
+            equivalent_groups, 
+            dfa_definition, 
+            reachable_states
         )
         
-        # Create minimizer and minimize
-        minimizer = DFAMinimizer(dfa)
-        original_state_count = len(dfa.states)
-        
-        minimized_dfa = minimizer.minimize()
-        minimized_state_count = len(minimized_dfa.states)
-        
-        # Convert back to dictionary format
-        minimized_definition = {
-            'states': list(minimized_dfa.states),
-            'alphabet': list(minimized_dfa.alphabet),
-            'transitions': minimized_dfa.transitions,
-            'start_state': minimized_dfa.start_state,
-            'accept_states': list(minimized_dfa.final_states)
-        }
-        
-        return {
-            'minimized': minimized_definition,
-            'original_states': original_state_count,
-            'minimized_states': minimized_state_count,
-            'state_mapping': minimizer.state_mapping  # Optional: for debugging
-        }
+        return create_minimization_result(
+            dfa_definition, 
+            minimized_dfa, 
+            len(states), 
+            len(minimized_dfa['states'])
+        )
         
     except Exception as e:
-        # Return original DFA if minimization fails
-        print(f"Error during minimization: {e}")
-        return {
-            'minimized': dfa_definition,
-            'original_states': len(dfa_definition.get('states', [])),
-            'minimized_states': len(dfa_definition.get('states', []))
-        }
+        raise Exception(f"Error in DFA minimization: {str(e)}")
 
-# ===== HELPER FUNCTIONS (jika diperlukan) =====
+def find_reachable_states(states, transitions, start_state, alphabet):
+    """Mencari semua state yang reachable dari start state"""
+    reachable = set()
+    stack = [start_state]
+    
+    # Pastikan start_state valid
+    if start_state not in states:
+        raise ValueError(f"Start state '{start_state}' not found in states list")
+    
+    while stack:
+        current = stack.pop()
+        if current not in reachable:
+            reachable.add(current)
+            
+            # Cek semua transisi dari current state
+            for symbol in alphabet:
+                transition_key = f"{current},{symbol}"
+                if transition_key in transitions:
+                    next_state = transitions[transition_key]
+                    # Validasi bahwa next_state ada dalam daftar states
+                    if next_state in states and next_state not in reachable:
+                        stack.append(next_state)
+    
+    return list(reachable)
+
+def create_distinguishable_table(states, accept_states):
+    """Membuat tabel untuk menandai pasangan state yang distinguishable"""
+    distinguishable = {}
+    
+    for i in range(len(states)):
+        for j in range(i + 1, len(states)):
+            state1, state2 = states[i], states[j]
+            # Tandai sebagai distinguishable jika satu accepting dan satu non-accepting
+            distinguishable[(state1, state2)] = (
+                (state1 in accept_states) != (state2 in accept_states)
+            )
+    
+    return distinguishable
+
+def mark_distinguishable_states(distinguishable, states, transitions, alphabet):
+    """Table-filling algorithm untuk menandai semua pasangan distinguishable"""
+    changed = True
+    
+    while changed:
+        changed = False
+        
+        for (state1, state2), is_distinguishable in distinguishable.items():
+            if not is_distinguishable:  # Jika belum ditandai sebagai distinguishable
+                
+                for symbol in alphabet:
+                    # Cari next states untuk kedua state
+                    next1 = transitions.get(f"{state1},{symbol}")
+                    next2 = transitions.get(f"{state2},{symbol}")
+                    
+                    if next1 is None or next2 is None:
+                        # Jika salah satu tidak ada transisi, mereka distinguishable
+                        distinguishable[(state1, state2)] = True
+                        changed = True
+                        break
+                    elif next1 != next2:
+                        # Cek apakah next states sudah distinguishable
+                        pair = (min(next1, next2), max(next1, next2))
+                        if pair in distinguishable and distinguishable[pair]:
+                            distinguishable[(state1, state2)] = True
+                            changed = True
+                            break
+
+def find_equivalent_groups(distinguishable, states):
+    """Mencari grup-grup state yang equivalent"""
+    groups = []
+    processed = set()
+    
+    for state in states:
+        if state not in processed:
+            group = [state]
+            processed.add(state)
+            
+            for other_state in states:
+                if other_state not in processed:
+                    pair = (min(state, other_state), max(state, other_state))
+                    if pair not in distinguishable or not distinguishable[pair]:
+                        group.append(other_state)
+                        processed.add(other_state)
+            
+            groups.append(group)
+    
+    return groups
+
+def build_minimized_dfa(equivalent_groups, original_dfa, reachable_states):
+    """Membangun DFA yang sudah diminimize dari equivalent groups"""
+    # Buat mapping dari state asli ke representative state
+    state_mapping = {}
+    new_states = []
+    
+    for i, group in enumerate(equivalent_groups):
+        representative = f"q{i}"
+        new_states.append(representative)
+        for state in group:
+            state_mapping[state] = representative
+    
+    # Buat transisi baru
+    new_transitions = {}
+    for symbol in original_dfa['alphabet']:
+        for group in equivalent_groups:
+            representative = state_mapping[group[0]]
+            
+            # Ambil transisi dari representative state asli
+            old_state = group[0]
+            transition_key = f"{old_state},{symbol}"
+            if transition_key in original_dfa['transitions']:
+                old_next_state = original_dfa['transitions'][transition_key]
+                new_next_state = state_mapping.get(old_next_state)
+                if new_next_state:
+                    new_transitions[f"{representative},{symbol}"] = new_next_state
+    
+    # Tentukan start state dan accept states baru
+    new_start_state = state_mapping.get(original_dfa['start_state'])
+    new_accept_states = []
+    
+    for accept_state in original_dfa['accept_states']:
+        if accept_state in state_mapping:
+            new_state = state_mapping[accept_state]
+            if new_state not in new_accept_states:
+                new_accept_states.append(new_state)
+    
+    return {
+        'states': new_states,
+        'alphabet': original_dfa['alphabet'],
+        'transitions': new_transitions,
+        'start_state': new_start_state,
+        'accept_states': new_accept_states
+    }
+
+def create_minimization_result(original_dfa, minimized_dfa, original_count, minimized_count):
+    """Membuat result object untuk minimization"""
+    return {
+        'minimized': minimized_dfa,
+        'original_states': original_count,
+        'minimized_states': minimized_count,
+        'reduction_percentage': round((1 - minimized_count/original_count) * 100, 2) if original_count > 0 else 0
+    }
+
+# ===== HELPER FUNCTIONS =====
 def validate_dfa_input(dfa):
     """Validasi input DFA"""
-    required_keys = ['states', 'alphabet', 'transitions', 'start_state']
-    
-    # Check for accept_states or final_states
-    has_accept_states = 'accept_states' in dfa or 'final_states' in dfa
-    
-    basic_validation = all(key in dfa for key in required_keys) and has_accept_states
-    
-    if not basic_validation:
+    if not isinstance(dfa, dict):
         return False
     
-    # Additional validations
+    required_keys = ['states', 'alphabet', 'transitions', 'start_state', 'accept_states']
+    
+    # Cek apakah semua key yang diperlukan ada
+    if not all(key in dfa for key in required_keys):
+        print(f"Missing required keys. Found: {list(dfa.keys())}")
+        return False
+    
+    # Validasi lebih detail
     try:
-        states = set(dfa['states'])
-        alphabet = set(dfa['alphabet'])
-        transitions = dfa['transitions']
-        start_state = dfa['start_state']
-        final_states = dfa.get('accept_states', dfa.get('final_states', []))
-        
-        # Check if start state is in states
-        if start_state not in states:
+        # States harus berupa list dan tidak kosong
+        if not isinstance(dfa['states'], list) or len(dfa['states']) == 0:
+            print(f"States validation failed: {dfa['states']}")
             return False
         
-        # Check if final states are in states
-        for fs in final_states:
-            if fs not in states:
+        # Alphabet harus berupa list dan tidak kosong
+        if not isinstance(dfa['alphabet'], list) or len(dfa['alphabet']) == 0:
+            print(f"Alphabet validation failed: {dfa['alphabet']}")
+            return False
+        
+        # Transitions harus berupa dict
+        if not isinstance(dfa['transitions'], dict):
+            print(f"Transitions validation failed: {type(dfa['transitions'])}")
+            return False
+        
+        # Start state harus ada dalam states
+        if dfa['start_state'] not in dfa['states']:
+            print(f"Start state '{dfa['start_state']}' not in states: {dfa['states']}")
+            return False
+        
+        # Accept states harus berupa list dan semua element ada dalam states
+        if not isinstance(dfa['accept_states'], list):
+            print(f"Accept states validation failed: {type(dfa['accept_states'])}")
+            return False
+        
+        for accept_state in dfa['accept_states']:
+            if accept_state not in dfa['states']:
+                print(f"Accept state '{accept_state}' not in states: {dfa['states']}")
                 return False
         
-        # Check transitions format
-        for state, trans in transitions.items():
-            if state not in states:
+        # Validasi transitions - pastikan semua state dan symbol yang direferensikan valid
+        for transition_key, next_state in dfa['transitions'].items():
+            if ',' not in transition_key:
+                print(f"Invalid transition key format: '{transition_key}' (expected 'state,symbol')")
                 return False
-            if not isinstance(trans, dict):
+                
+            state, symbol = transition_key.split(',', 1)
+            
+            if state not in dfa['states']:
+                print(f"Transition references invalid state: '{state}'")
                 return False
-            for symbol, next_state in trans.items():
-                if symbol not in alphabet or next_state not in states:
-                    return False
+                
+            if symbol not in dfa['alphabet']:
+                print(f"Transition references invalid symbol: '{symbol}'")
+                return False
+                
+            if next_state not in dfa['states']:
+                print(f"Transition leads to invalid state: '{next_state}'")
+                return False
         
         return True
         
-    except (KeyError, TypeError):
+    except Exception as e:
+        print(f"Validation exception: {e}")
+    
+    # Validasi lebih detail
+    try:
+        # States harus berupa list dan tidak kosong
+        if not isinstance(dfa['states'], list) or len(dfa['states']) == 0:
+            return False
+        
+        # Alphabet harus berupa list dan tidak kosong
+        if not isinstance(dfa['alphabet'], list) or len(dfa['alphabet']) == 0:
+            return False
+        
+        # Transitions harus berupa dict
+        if not isinstance(dfa['transitions'], dict):
+            return False
+        
+        # Start state harus ada dalam states
+        if dfa['start_state'] not in dfa['states']:
+            return False
+        
+        # Accept states harus berupa list dan semua element ada dalam states
+        if not isinstance(dfa['accept_states'], list):
+            return False
+        
+        for accept_state in dfa['accept_states']:
+            if accept_state not in dfa['states']:
+                return False
+        
+        return True
+        
+    except Exception:
         return False
 
 def validate_string_input(string):
     """Validasi input string"""
     return isinstance(string, str) and len(string) <= 1000
 
-# ===== EXAMPLE USAGE =====
-def test_minimization():
-    """Test function with example DFA"""
-    example_dfa = {
-        'states': ['q0', 'q1', 'q2', 'q3', 'q4'],
-        'alphabet': ['a', 'b'],
-        'transitions': {
-            'q0': {'a': 'q1', 'b': 'q2'},
-            'q1': {'a': 'q3', 'b': 'q4'},
-            'q2': {'a': 'q4', 'b': 'q3'},
-            'q3': {'a': 'q3', 'b': 'q3'},
-            'q4': {'a': 'q4', 'b': 'q4'}
-        },
-        'start_state': 'q0',
-        'accept_states': ['q3', 'q4']
-    }
-    
-    result = minimize_dfa(example_dfa)
-    print("Original DFA:", example_dfa)
-    print("\nMinimization Result:", result)
-    
-    return result
-
-# Uncomment to test:
-# test_minimization()
+def print_dfa_info(dfa, title="DFA"):
+    """Helper function untuk debugging - print info DFA"""
+    print(f"\n=== {title} ===")
+    print(f"States: {dfa.get('states', [])}")
+    print(f"Alphabet: {dfa.get('alphabet', [])}")
+    print(f"Start State: {dfa.get('start_state', 'None')}")
+    print(f"Accept States: {dfa.get('accept_states', [])}")
+    print("Transitions:")
+    for key, value in dfa.get('transitions', {}).items():
+        print(f"  {key} -> {value}")

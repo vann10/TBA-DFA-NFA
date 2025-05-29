@@ -1,5 +1,6 @@
 from flask import Flask, render_template, request, jsonify
 from models.function2 import State, regex_to_nfa
+from models.function3 import minimize_dfa, validate_dfa_input  # Import fungsi yang sudah diperbaiki
 import re
 from models.function4 import compare_dfas
 import json
@@ -33,11 +34,27 @@ def dfa_test_page():
 def dfa_test():
     try:
         data = request.get_json()
+        
+        # Validasi input
+        if not data or 'dfa' not in data or 'string' not in data:
+            return jsonify({'success': False, 'error': 'Missing required data'}), 400
+        
         dfa_input = data['dfa']
         test_string = data['string']
         
-        # Panggil fungsi DFA Anda yang sudah ada
-        result = test_dfa_string(dfa_input, test_string)  # Ganti dengan nama fungsi Anda
+        # Parse DFA jika dalam bentuk string
+        if isinstance(dfa_input, str):
+            try:
+                dfa_input = json.loads(dfa_input)
+            except json.JSONDecodeError:
+                return jsonify({'success': False, 'error': 'Invalid DFA JSON format'}), 400
+        
+        # Validasi struktur DFA
+        if not validate_dfa_input(dfa_input):
+            return jsonify({'success': False, 'error': 'Invalid DFA structure'}), 400
+        
+        # Test DFA dengan string
+        result = test_dfa_string(dfa_input, test_string)
         
         return jsonify({
             'success': True,
@@ -46,7 +63,32 @@ def dfa_test():
             'message': f"String '{test_string}' {'diterima' if result['accepted'] else 'ditolak'}"
         })
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 400
+        return jsonify({'success': False, 'error': f'Server error: {str(e)}'}), 500
+
+def test_dfa_string(dfa, input_string):
+    """
+    Test apakah string diterima oleh DFA
+    """
+    try:
+        current_state = dfa['start_state']
+        trace = [current_state]
+        
+        for symbol in input_string:
+            if symbol not in dfa['alphabet']:
+                return {'accepted': False, 'trace': trace, 'error': f'Symbol {symbol} not in alphabet'}
+            
+            transition_key = f"{current_state},{symbol}"
+            if transition_key not in dfa['transitions']:
+                return {'accepted': False, 'trace': trace, 'error': f'No transition for {current_state} on {symbol}'}
+            
+            current_state = dfa['transitions'][transition_key]
+            trace.append(current_state)
+        
+        accepted = current_state in dfa['accept_states']
+        return {'accepted': accepted, 'trace': trace}
+        
+    except Exception as e:
+        return {'accepted': False, 'trace': [], 'error': str(e)}
 
 # ===== NFA & REGEX =====
 @app.route('/regex-nfa')  
@@ -83,35 +125,48 @@ def regex_nfa():
 # ===== DFA MINIMIZATION =====
 @app.route('/dfa-minimize')
 def dfa_minimize_page():
-    return render_template('minimasi_dfa.html')
+    return render_template('dfa_minimize.html')
 
 @app.route('/dfa-minimize', methods=['POST'])
 def dfa_minimize():
     try:
         data = request.get_json()
+        
+        # Validasi input data
+        if not data or 'dfa' not in data:
+            return jsonify({'success': False, 'error': 'Missing DFA data'}), 400
+        
         dfa_input = data['dfa']
         
-        # Import and use the minimize_dfa function from function3
-        from models.function3 import minimize_dfa
-        result = minimize_dfa(dfa_input)
+        # Parse DFA jika dalam bentuk string JSON
+        if isinstance(dfa_input, str):
+            try:
+                dfa_input = json.loads(dfa_input)
+            except json.JSONDecodeError as e:
+                return jsonify({'success': False, 'error': f'Invalid JSON format: {str(e)}'}), 400
         
-        # Get the number of states for statistics
-        original_states = len(dfa_input['states'])
-        minimized_states = len(result['states']) if isinstance(result, dict) else len(result.states)
+        # Validasi struktur DFA
+        if not validate_dfa_input(dfa_input):
+            return jsonify({'success': False, 'error': 'Invalid DFA structure. Required: states, alphabet, transitions, start_state, accept_states'}), 400
+        
+        # Panggil fungsi minimize DFA
+        result = minimize_dfa(dfa_input)
         
         return jsonify({
             'success': True,
             'original_dfa': dfa_input,
-            'minimized_dfa': result,
+            'minimized_dfa': result['minimized'],
             'reduction_info': {
-                'original_states': original_states,
-                'minimized_states': minimized_states,
-                'states_removed': original_states - minimized_states
+                'original_states': result['original_states'],
+                'minimized_states': result['minimized_states'],
+                'states_removed': result['original_states'] - result['minimized_states'],
+                'reduction_percentage': result.get('reduction_percentage', 0)
             },
-            'message': 'DFA berhasil diminimalisasi'
+            'message': f'DFA berhasil diminimalisasi dari {result["original_states"]} state menjadi {result["minimized_states"]} state'
         })
+        
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 400
+        return jsonify({'success': False, 'error': f'Minimization error: {str(e)}'}), 500
 
 # ===== DFA COMPARISON =====
 @app.route('/dfa-compare')  
@@ -123,22 +178,41 @@ def dfa_compare():
     try:
         data = request.get_json()
         
-        # Parsing yang benar
-        dfa1 = json.loads(data['dfa1'])  # Ini sudah string JSON
-        dfa2 = json.loads(data['dfa2'])
+        # Validasi input
+        if not data or 'dfa1' not in data or 'dfa2' not in data:
+            return jsonify({'success': False, 'error': 'Missing DFA data'}), 400
+        
+        # Parsing DFA
+        try:
+            if isinstance(data['dfa1'], str):
+                dfa1 = json.loads(data['dfa1'])
+            else:
+                dfa1 = data['dfa1']
+                
+            if isinstance(data['dfa2'], str):
+                dfa2 = json.loads(data['dfa2'])
+            else:
+                dfa2 = data['dfa2']
+        except json.JSONDecodeError as e:
+            return jsonify({'success': False, 'error': f'Invalid JSON: {str(e)}'}), 400
+        
+        # Validasi struktur DFA
+        if not validate_dfa_input(dfa1):
+            return jsonify({'success': False, 'error': 'Invalid structure for DFA 1'}), 400
+        if not validate_dfa_input(dfa2):
+            return jsonify({'success': False, 'error': 'Invalid structure for DFA 2'}), 400
         
         result = compare_dfas(dfa1, dfa2)
         
         return jsonify({
             'success': True,
             'equivalent': result['equivalent'],
-            'details': result['details'],  # Pastikan ini ada
-            'message': f"DFA comparison completed"
+            'details': result.get('details', {}),
+            'message': f"DFA comparison completed: {'Equivalent' if result['equivalent'] else 'Not equivalent'}"
         })
-    except json.JSONDecodeError as e:
-        return jsonify({'success': False, 'error': f'Invalid JSON: {str(e)}'}), 400
+        
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 400
+        return jsonify({'success': False, 'error': f'Comparison error: {str(e)}'}), 500
 
 # ===== ERROR HANDLERS =====
 @app.errorhandler(404)
