@@ -2,53 +2,789 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <title>Regex to NFA</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Regex to NFA Converter</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .state-circle {
+            fill: #e0e7ff;
+            stroke: #4f46e5;
+            stroke-width: 2;
+        }
+        .accept-state {
+            fill: #dcfce7;
+            stroke: #16a34a;
+            stroke-width: 3;
+        }
+        .start-state {
+            fill: #fef3c7;
+            stroke: #d97706;
+            stroke-width: 3;
+        }
+        .transition-line {
+            stroke: #374151;
+            stroke-width: 2;
+            fill: none;
+            marker-end: url(#arrowhead);
+        }
+        .epsilon-line {
+            stroke: #dc2626;
+            stroke-width: 2;
+            stroke-dasharray: 5,5;
+            fill: none;
+            marker-end: url(#arrowhead);
+        }
+        .state-label {
+            text-anchor: middle;
+            dominant-baseline: middle;
+            font-size: 14px;
+            font-weight: bold;
+            fill: #1f2937;
+        }
+        .transition-label {
+            text-anchor: middle;
+            dominant-baseline: middle;
+            font-size: 12px;
+            fill: #374151;
+            background: white;
+        }
+    </style>
 </head>
-<body class="bg-gray-100 min-h-screen flex flex-col items-center justify-center px-4 py-8">
+<body class="bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen py-8">
 
-    <div class="bg-white shadow-lg rounded-xl p-8 w-full max-w-xl">
-        <h2 class="text-2xl font-bold text-center text-indigo-600 mb-6">Konversi REGEX ke NFA</h2>
-        <form method="POST" class="space-y-4">
-            <div>
-                <label class="block font-semibold text-gray-700">Masukkan REGEX:</label>
-                <input type="text" name="regex" required
-                       class="w-full px-4 py-2 mt-1 border rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+    <div class="container mx-auto px-4 max-w-6xl">
+        <div class="bg-white shadow-2xl rounded-2xl overflow-hidden">
+            <!-- Header -->
+            <div class="bg-gradient-to-r from-indigo-600 to-purple-600 p-6">
+                <h1 class="text-3xl font-bold text-white text-center">
+                    🔄 Konversi REGEX ke NFA
+                </h1>
+                <p class="text-indigo-100 text-center mt-2">
+                    Masukkan regular expression dan lihat visualisasi NFA-nya
+                </p>
             </div>
 
-            <div>
-                <label class="block font-semibold text-gray-700">Masukkan string uji:</label>
-                <input type="text" name="input_string"
-                       class="w-full px-4 py-2 mt-1 border rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+            <!-- Input Form -->
+            <div class="p-6 bg-gray-50 border-b">
+                <div class="grid md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block font-semibold text-gray-700 mb-2">
+                            📝 Masukkan REGEX:
+                        </label>
+                        <input type="text" id="regexInput" 
+                               placeholder="Contoh: (a|b)*abb"
+                               class="w-full px-4 py-3 border-2 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all">
+                        <p class="text-sm text-gray-500 mt-1">
+                            Operasi: | (atau), * (kleene star), () (grouping)
+                        </p>
+                    </div>
+                    
+                    <div>
+                        <label class="block font-semibold text-gray-700 mb-2">
+                            🧪 String uji (opsional):
+                        </label>
+                        <input type="text" id="testString" 
+                               placeholder="Contoh: aabb"
+                               class="w-full px-4 py-3 border-2 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all">
+                        <p class="text-sm text-gray-500 mt-1">
+                            Test apakah string diterima oleh NFA
+                        </p>
+                    </div>
+                </div>
+                
+                <div class="flex gap-4 mt-6">
+                    <button onclick="processRegex()" 
+                            class="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-semibold py-3 px-8 rounded-lg shadow-lg transition-all transform hover:scale-105">
+                        🚀 Proses
+                    </button>
+                    <button onclick="clearAll()" 
+                            class="bg-gray-500 hover:bg-gray-600 text-white font-semibold py-3 px-6 rounded-lg shadow-lg transition-all">
+                        🗑️ Clear
+                    </button>
+                </div>
             </div>
 
-            <div class="text-center">
-                <input type="submit" value="Proses"
-                       class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-6 rounded-lg shadow-md transition duration-300">
+            <!-- Results Container -->
+            <div class="p-6">
+                <div id="errorMessage" class="hidden bg-red-50 border border-red-200 text-red-800 p-4 rounded-lg mb-6">
+                </div>
+
+                <div id="resultsContainer" class="hidden">
+                    <!-- Test Result -->
+                    <div id="testResult" class="hidden mb-6">
+                        <h3 class="text-xl font-bold text-gray-800 mb-3 flex items-center">
+                            🎯 Hasil Pengujian String
+                        </h3>
+                        <div id="testResultContent" class="p-4 rounded-lg border-l-4"></div>
+                    </div>
+
+                    <!-- Transition Table -->
+                    <div class="mb-6">
+                        <h3 class="text-xl font-bold text-gray-800 mb-3 flex items-center">
+                            📊 Tabel Transisi
+                        </h3>
+                        <div class="bg-gray-50 p-4 rounded-lg border">
+                            <pre id="transitionTable" class="text-sm text-gray-800 whitespace-pre-wrap font-mono"></pre>
+                        </div>
+                    </div>
+
+                    <!-- NFA Diagram -->
+                    <div>
+                        <h3 class="text-xl font-bold text-gray-800 mb-3 flex items-center">
+                            🎨 Diagram NFA
+                        </h3>
+                        <div class="bg-white border-2 border-gray-200 rounded-lg p-4 overflow-auto">
+                            <svg id="nfaDiagram" class="w-full" style="min-height: 400px;">
+                                <!-- Arrow marker definition -->
+                                <defs>
+                                    <marker id="arrowhead" markerWidth="10" markerHeight="7" 
+                                            refX="9" refY="3.5" orient="auto">
+                                        <polygon points="0 0, 10 3.5, 0 7" fill="#374151" />
+                                    </marker>
+                                </defs>
+                            </svg>
+                        </div>
+                        <div class="mt-4 flex flex-wrap gap-4 text-sm">
+                            <div class="flex items-center">
+                                <div class="w-4 h-4 rounded-full bg-yellow-200 border-2 border-yellow-600 mr-2"></div>
+                                <span>Start State</span>
+                            </div>
+                            <div class="flex items-center">
+                                <div class="w-4 h-4 rounded-full bg-green-200 border-2 border-green-600 mr-2"></div>
+                                <span>Accept State</span>
+                            </div>
+                            <div class="flex items-center">
+                                <div class="w-4 h-4 rounded-full bg-indigo-200 border-2 border-indigo-600 mr-2"></div>
+                                <span>Regular State</span>
+                            </div>
+                            <div class="flex items-center">
+                                <div class="w-6 h-0.5 bg-red-600 mr-2" style="border-top: 2px dashed #dc2626;"></div>
+                                <span>ε-transition</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
-        </form>
-
-        {% if transition_table %}
-        <div class="mt-8">
-            <h3 class="text-lg font-semibold text-gray-800 mb-2">Hasil Konversi</h3>
-            <pre class="bg-gray-100 p-4 rounded-md overflow-x-auto text-sm text-gray-800 border border-gray-300">{{ transition_table }}</pre>
         </div>
-        {% endif %}
-
-        {% if nfa_image %}
-        <div class="mt-6">
-            <h3 class="text-lg font-semibold text-gray-800 mb-2">Visualisasi NFA:</h3>
-            <img src="{{ url_for('static', filename='nfa_result.png') }}" alt="NFA Diagram" class="rounded-lg border border-gray-300 shadow-md max-w-full h-auto">
-        </div>
-        {% endif %}
-        
-        {% if test_result %}
-        <div class="mt-6">
-            <h3 class="text-lg font-semibold text-gray-800 mb-2">Hasil Pengujian String</h3>
-            <p class="bg-green-50 border border-green-200 text-green-800 p-3 rounded-md">{{ test_result|safe }}</p>
-        </div>
-        {% endif %}
     </div>
+
+    <script>
+        // NFA Classes
+        class State {
+            static idCounter = 0;
+            
+            constructor() {
+                this.transitions = {};
+                this.epsilon = new Set();
+                this.id = `q${State.idCounter++}`;
+            }
+        }
+
+        class NFA {
+            constructor(start, accept) {
+                this.start = start;
+                this.accept = accept;
+            }
+
+            addTransition(fromState, symbol, toState) {
+                if (symbol === "") {
+                    fromState.epsilon.add(toState);
+                } else {
+                    if (!fromState.transitions[symbol]) {
+                        fromState.transitions[symbol] = new Set();
+                    }
+                    fromState.transitions[symbol].add(toState);
+                }
+            }
+
+            epsilonClosure(states) {
+                const stack = [...states];
+                const closure = new Set(states);
+                
+                while (stack.length > 0) {
+                    const state = stack.pop();
+                    for (const nextState of state.epsilon) {
+                        if (!closure.has(nextState)) {
+                            closure.add(nextState);
+                            stack.push(nextState);
+                        }
+                    }
+                }
+                return closure;
+            }
+
+            processInput(string) {
+                let currentStates = this.epsilonClosure(new Set([this.start]));
+                
+                for (const char of string) {
+                    const nextStates = new Set();
+                    for (const state of currentStates) {
+                        if (state.transitions[char]) {
+                            for (const nextState of state.transitions[char]) {
+                                const epsilonStates = this.epsilonClosure(new Set([nextState]));
+                                for (const epsilonState of epsilonStates) {
+                                    nextStates.add(epsilonState);
+                                }
+                            }
+                        }
+                    }
+                    currentStates = nextStates;
+                }
+                
+                return currentStates.has(this.accept);
+            }
+
+            getAllStates() {
+                const visited = new Set();
+                const stack = [this.start];
+                
+                while (stack.length > 0) {
+                    const state = stack.pop();
+                    if (!visited.has(state)) {
+                        visited.add(state);
+                        
+                        for (const symbol in state.transitions) {
+                            for (const toState of state.transitions[symbol]) {
+                                stack.push(toState);
+                            }
+                        }
+                        
+                        for (const toState of state.epsilon) {
+                            stack.push(toState);
+                        }
+                    }
+                }
+                
+                return Array.from(visited).sort((a, b) => {
+                    return parseInt(a.id.substring(1)) - parseInt(b.id.substring(1));
+                });
+            }
+
+            getTransitionTableString() {
+                const output = [];
+                const states = this.getAllStates();
+                
+                for (const state of states) {
+                    for (const symbol in state.transitions) {
+                        for (const toState of state.transitions[symbol]) {
+                            output.push(`${state.id} -- ${symbol} --> ${toState.id}`);
+                        }
+                    }
+                    for (const toState of state.epsilon) {
+                        output.push(`${state.id} -- ε --> ${toState.id}`);
+                    }
+                }
+                
+                output.push(`\nState awal   : ${this.start.id}`);
+                output.push(`State akhir  : ${this.accept.id}`);
+                
+                return output.join('\n');
+            }
+        }
+
+        // Regex to NFA conversion
+        function regexToNfa(regex) {
+            const tokens = Array.from(regex);
+            State.idCounter = 0; // Reset counter for consistent naming
+            
+            function parseExpr(tokens) {
+                const terms = [parseTerm(tokens)];
+                while (tokens.length > 0 && tokens[0] === '|') {
+                    tokens.shift();
+                    terms.push(parseTerm(tokens));
+                }
+                return terms.length === 1 ? terms[0] : buildAlternate(terms);
+            }
+
+            function parseTerm(tokens) {
+                const factors = [];
+                while (tokens.length > 0 && tokens[0] !== ')' && tokens[0] !== '|') {
+                    factors.push(parseFactor(tokens));
+                }
+                return factors.length === 0 ? buildEpsilon() : buildConcatenate(factors);
+            }
+
+            function parseFactor(tokens) {
+                let base = parseBase(tokens);
+                while (tokens.length > 0 && tokens[0] === '*') {
+                    tokens.shift();
+                    base = buildKleeneStar(base);
+                }
+                return base;
+            }
+
+            function parseBase(tokens) {
+                const token = tokens.shift();
+                if (token === '(') {
+                    const inner = parseExpr(tokens);
+                    if (tokens.length === 0 || tokens.shift() !== ')') {
+                        throw new Error("Kurung tidak seimbang");
+                    }
+                    return inner;
+                }
+                return buildSymbol(token);
+            }
+
+            function buildSymbol(symbol) {
+                const s1 = new State();
+                const s2 = new State();
+                const nfa = new NFA(s1, s2);
+                nfa.addTransition(s1, symbol, s2);
+                return nfa;
+            }
+
+            function buildConcatenate(nfas) {
+                const nfa = nfas[0];
+                for (let i = 1; i < nfas.length; i++) {
+                    nfa.addTransition(nfa.accept, "", nfas[i].start);
+                    nfa.accept = nfas[i].accept;
+                }
+                return nfa;
+            }
+
+            function buildAlternate(nfas) {
+                const start = new State();
+                const accept = new State();
+                const nfa = new NFA(start, accept);
+                
+                for (const subNfa of nfas) {
+                    nfa.addTransition(start, "", subNfa.start);
+                    nfa.addTransition(subNfa.accept, "", accept);
+                }
+                return nfa;
+            }
+
+            function buildKleeneStar(subNfa) {
+                const start = new State();
+                const accept = new State();
+                const nfa = new NFA(start, accept);
+                
+                nfa.addTransition(start, "", subNfa.start);
+                nfa.addTransition(start, "", accept);
+                nfa.addTransition(subNfa.accept, "", subNfa.start);
+                nfa.addTransition(subNfa.accept, "", accept);
+                
+                return nfa;
+            }
+
+            function buildEpsilon() {
+                const s1 = new State();
+                const s2 = new State();
+                const nfa = new NFA(s1, s2);
+                nfa.addTransition(s1, "", s2);
+                return nfa;
+            }
+
+            return parseExpr(tokens);
+        }
+
+        // Visualization with dynamic layout
+        function visualizeNFA(nfa) {
+            const svg = document.getElementById('nfaDiagram');
+            svg.innerHTML = `
+                <defs>
+                    <marker id="arrowhead" markerWidth="10" markerHeight="7" 
+                            refX="9" refY="3.5" orient="auto">
+                        <polygon points="0 0, 10 3.5, 0 7" fill="#374151" />
+                    </marker>
+                </defs>
+            `;
+
+            const states = nfa.getAllStates();
+            const statePositions = calculateDynamicLayout(nfa, states);
+            
+            // Determine SVG dimensions based on layout
+            const positions = Object.values(statePositions);
+            const minX = Math.min(...positions.map(p => p.x)) - 100;
+            const maxX = Math.max(...positions.map(p => p.x)) + 100;
+            const minY = Math.min(...positions.map(p => p.y)) - 100;
+            const maxY = Math.max(...positions.map(p => p.y)) + 100;
+            
+            svg.setAttribute('viewBox', `${minX} ${minY} ${maxX - minX} ${maxY - minY}`);
+            svg.setAttribute('width', Math.max(600, maxX - minX));
+            svg.setAttribute('height', Math.max(300, maxY - minY));
+
+            // Draw transitions first (so they appear behind states)
+            states.forEach(state => {
+                const fromPos = statePositions[state.id];
+                
+                // Regular transitions
+                for (const symbol in state.transitions) {
+                    for (const toState of state.transitions[symbol]) {
+                        const toPos = statePositions[toState.id];
+                        if (fromPos && toPos) {
+                            drawTransition(svg, fromPos, toPos, symbol, false);
+                        }
+                    }
+                }
+                
+                // Epsilon transitions
+                for (const toState of state.epsilon) {
+                    const toPos = statePositions[toState.id];
+                    if (fromPos && toPos) {
+                        drawTransition(svg, fromPos, toPos, 'ε', true);
+                    }
+                }
+            });
+
+            // Draw states
+            states.forEach(state => {
+                const pos = statePositions[state.id];
+                if (pos) {
+                    drawState(svg, pos, state, nfa);
+                }
+            });
+        }
+
+        function calculateDynamicLayout(nfa, states) {
+            const statePositions = {};
+            
+            // Build adjacency graph
+            const graph = {};
+            states.forEach(state => {
+                graph[state.id] = {
+                    state: state,
+                    outgoing: new Set(),
+                    incoming: new Set()
+                };
+            });
+            
+            states.forEach(state => {
+                for (const symbol in state.transitions) {
+                    for (const toState of state.transitions[symbol]) {
+                        graph[state.id].outgoing.add(toState.id);
+                        graph[toState.id].incoming.add(state.id);
+                    }
+                }
+                for (const toState of state.epsilon) {
+                    graph[state.id].outgoing.add(toState.id);
+                    graph[toState.id].incoming.add(state.id);
+                }
+            });
+
+            // Perform topological sort to determine levels
+            const levels = [];
+            const inDegree = {};
+            states.forEach(state => {
+                inDegree[state.id] = graph[state.id].incoming.size;
+            });
+
+            // Start with nodes that have no incoming edges (or start state)
+            const queue = [];
+            if (inDegree[nfa.start.id] === 0 || states.length === 1) {
+                queue.push({state: nfa.start, level: 0});
+                inDegree[nfa.start.id] = -1; // Mark as processed
+            } else {
+                // If start state has incoming edges, still place it first
+                queue.push({state: nfa.start, level: 0});
+                inDegree[nfa.start.id] = -1;
+            }
+
+            const processedStates = new Set();
+            
+            while (queue.length > 0) {
+                const {state, level} = queue.shift();
+                
+                if (processedStates.has(state.id)) continue;
+                processedStates.add(state.id);
+                
+                if (!levels[level]) levels[level] = [];
+                levels[level].push(state);
+                
+                // Add connected states to next levels
+                for (const nextStateId of graph[state.id].outgoing) {
+                    const nextState = graph[nextStateId].state;
+                    if (!processedStates.has(nextStateId)) {
+                        // Calculate appropriate level based on dependencies
+                        let nextLevel = level + 1;
+                        
+                        // Check if all incoming states are processed
+                        let canProcess = true;
+                        for (const incomingId of graph[nextStateId].incoming) {
+                            if (!processedStates.has(incomingId) && incomingId !== state.id) {
+                                canProcess = false;
+                                break;
+                            }
+                        }
+                        
+                        if (canProcess) {
+                            queue.push({state: nextState, level: nextLevel});
+                        }
+                    }
+                }
+            }
+            
+            // Add any remaining unprocessed states
+            states.forEach(state => {
+                if (!processedStates.has(state.id)) {
+                    if (!levels[levels.length]) levels[levels.length] = [];
+                    levels[levels.length - 1].push(state);
+                }
+            });
+
+            // Calculate positions with better spacing
+            const baseWidth = 150;
+            const baseHeight = 100;
+            const minLevelWidth = 200;
+            const minStateSpacing = 80;
+            
+            const totalWidth = Math.max(levels.length * minLevelWidth, 600);
+            const levelWidth = totalWidth / Math.max(levels.length, 1);
+            
+            levels.forEach((levelStates, levelIndex) => {
+                const numStates = levelStates.length;
+                const totalHeight = Math.max(numStates * minStateSpacing, 300);
+                const stateSpacing = totalHeight / (numStates + 1);
+                
+                levelStates.forEach((state, stateIndex) => {
+                    statePositions[state.id] = {
+                        x: baseWidth + levelIndex * levelWidth,
+                        y: baseHeight + (stateIndex + 1) * stateSpacing
+                    };
+                });
+            });
+
+            // Apply force-directed adjustments for better layout
+            applyForceDirectedLayout(statePositions, graph, states, 50);
+            
+            return statePositions;
+        }
+
+        function applyForceDirectedLayout(positions, graph, states, iterations) {
+            const k = 100; // Optimal distance between nodes
+            const c = 0.1; // Cooling factor
+            
+            for (let iter = 0; iter < iterations; iter++) {
+                const forces = {};
+                
+                // Initialize forces
+                states.forEach(state => {
+                    forces[state.id] = {x: 0, y: 0};
+                });
+                
+                // Repulsive forces between all pairs
+                for (let i = 0; i < states.length; i++) {
+                    for (let j = i + 1; j < states.length; j++) {
+                        const state1 = states[i];
+                        const state2 = states[j];
+                        const pos1 = positions[state1.id];
+                        const pos2 = positions[state2.id];
+                        
+                        const dx = pos1.x - pos2.x;
+                        const dy = pos1.y - pos2.y;
+                        const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+                        
+                        const force = k * k / dist;
+                        const fx = force * dx / dist;
+                        const fy = force * dy / dist;
+                        
+                        forces[state1.id].x += fx;
+                        forces[state1.id].y += fy;
+                        forces[state2.id].x -= fx;
+                        forces[state2.id].y -= fy;
+                    }
+                }
+                
+                // Attractive forces for connected nodes
+                states.forEach(state => {
+                    for (const nextStateId of graph[state.id].outgoing) {
+                        const pos1 = positions[state.id];
+                        const pos2 = positions[nextStateId];
+                        
+                        const dx = pos2.x - pos1.x;
+                        const dy = pos2.y - pos1.y;
+                        const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+                        
+                        const force = dist * dist / k;
+                        const fx = force * dx / dist;
+                        const fy = force * dy / dist;
+                        
+                        forces[state.id].x += fx * 0.5;
+                        forces[state.id].y += fy * 0.5;
+                        forces[nextStateId].x -= fx * 0.5;
+                        forces[nextStateId].y -= fy * 0.5;
+                    }
+                });
+                
+                // Apply forces with cooling
+                const temp = c * (iterations - iter) / iterations;
+                states.forEach(state => {
+                    const force = forces[state.id];
+                    const forceMag = Math.sqrt(force.x * force.x + force.y * force.y) || 1;
+                    const displacement = Math.min(forceMag, temp);
+                    
+                    positions[state.id].x += displacement * force.x / forceMag;
+                    positions[state.id].y += displacement * force.y / forceMag;
+                });
+            }
+        }
+
+        function drawState(svg, pos, state, nfa) {
+            const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+            circle.setAttribute('cx', pos.x);
+            circle.setAttribute('cy', pos.y);
+            circle.setAttribute('r', 25);
+            
+            if (state === nfa.start && state === nfa.accept) {
+                circle.setAttribute('class', 'state-circle');
+                circle.setAttribute('stroke', '#dc2626');
+                circle.setAttribute('stroke-width', '4');
+                circle.setAttribute('fill', '#fef2f2');
+            } else if (state === nfa.start) {
+                circle.setAttribute('class', 'start-state');
+            } else if (state === nfa.accept) {
+                circle.setAttribute('class', 'accept-state');
+            } else {
+                circle.setAttribute('class', 'state-circle');
+            }
+            
+            svg.appendChild(circle);
+
+            const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+            text.setAttribute('x', pos.x);
+            text.setAttribute('y', pos.y);
+            text.setAttribute('class', 'state-label');
+            text.textContent = state.id;
+            svg.appendChild(text);
+        }
+
+        function drawTransition(svg, fromPos, toPos, label, isEpsilon) {
+            const dx = toPos.x - fromPos.x;
+            const dy = toPos.y - fromPos.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            
+            // Calculate edge points (on circle boundary)
+            const radius = 25;
+            const startX = fromPos.x + (dx / distance) * radius;
+            const startY = fromPos.y + (dy / distance) * radius;
+            const endX = toPos.x - (dx / distance) * radius;
+            const endY = toPos.y - (dy / distance) * radius;
+
+            // Handle self-loops
+            if (distance < 5) {
+                const loopPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                const path = `M ${fromPos.x - 15} ${fromPos.y - 25} 
+                             Q ${fromPos.x} ${fromPos.y - 50} ${fromPos.x + 15} ${fromPos.y - 25}`;
+                loopPath.setAttribute('d', path);
+                loopPath.setAttribute('class', isEpsilon ? 'epsilon-line' : 'transition-line');
+                svg.appendChild(loopPath);
+
+                const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                text.setAttribute('x', fromPos.x);
+                text.setAttribute('y', fromPos.y - 35);
+                text.setAttribute('class', 'transition-label');
+                text.textContent = label;
+                svg.appendChild(text);
+                return;
+            }
+
+            // Draw line
+            const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+            line.setAttribute('x1', startX);
+            line.setAttribute('y1', startY);
+            line.setAttribute('x2', endX);
+            line.setAttribute('y2', endY);
+            line.setAttribute('class', isEpsilon ? 'epsilon-line' : 'transition-line');
+            svg.appendChild(line);
+
+            // Add label
+            const midX = (startX + endX) / 2;
+            const midY = (startY + endY) / 2;
+            
+            const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+            rect.setAttribute('x', midX - 8);
+            rect.setAttribute('y', midY - 8);
+            rect.setAttribute('width', 16);
+            rect.setAttribute('height', 16);
+            rect.setAttribute('fill', 'white');
+            rect.setAttribute('stroke', isEpsilon ? '#dc2626' : '#374151');
+            rect.setAttribute('rx', 3);
+            svg.appendChild(rect);
+
+            const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+            text.setAttribute('x', midX);
+            text.setAttribute('y', midY);
+            text.setAttribute('class', 'transition-label');
+            text.textContent = label;
+            svg.appendChild(text);
+        }
+
+        // Main processing function
+        function processRegex() {
+            const regexInput = document.getElementById('regexInput').value.trim();
+            const testString = document.getElementById('testString').value.trim();
+            const errorDiv = document.getElementById('errorMessage');
+            const resultsDiv = document.getElementById('resultsContainer');
+            
+            // Clear previous results
+            errorDiv.classList.add('hidden');
+            resultsDiv.classList.add('hidden');
+            
+            if (!regexInput) {
+                showError('Silakan masukkan regular expression terlebih dahulu.');
+                return;
+            }
+
+            try {
+                const nfa = regexToNfa(regexInput);
+                
+                // Show transition table
+                document.getElementById('transitionTable').textContent = nfa.getTransitionTableString();
+                
+                // Test string if provided
+                if (testString) {
+                    const accepted = nfa.processInput(testString);
+                    const testResultDiv = document.getElementById('testResult');
+                    const testContentDiv = document.getElementById('testResultContent');
+                    
+                    testResultDiv.classList.remove('hidden');
+                    if (accepted) {
+                        testContentDiv.className = 'p-4 rounded-lg border-l-4 bg-green-50 border-green-400 text-green-800';
+                        testContentDiv.innerHTML = `✅ String "<strong>${testString}</strong>" <strong>DITERIMA</strong> oleh NFA`;
+                    } else {
+                        testContentDiv.className = 'p-4 rounded-lg border-l-4 bg-red-50 border-red-400 text-red-800';
+                        testContentDiv.innerHTML = `❌ String "<strong>${testString}</strong>" <strong>DITOLAK</strong> oleh NFA`;
+                    }
+                } else {
+                    document.getElementById('testResult').classList.add('hidden');
+                }
+                
+                // Visualize NFA
+                visualizeNFA(nfa);
+                
+                resultsDiv.classList.remove('hidden');
+                
+            } catch (error) {
+                showError(`Error: ${error.message}`);
+            }
+        }
+
+        function showError(message) {
+            const errorDiv = document.getElementById('errorMessage');
+            errorDiv.textContent = message;
+            errorDiv.classList.remove('hidden');
+        }
+
+        function clearAll() {
+            document.getElementById('regexInput').value = '';
+            document.getElementById('testString').value = '';
+            document.getElementById('errorMessage').classList.add('hidden');
+            document.getElementById('resultsContainer').classList.add('hidden');
+        }
+
+        // Add Enter key support
+        document.getElementById('regexInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                processRegex();
+            }
+        });
+
+        document.getElementById('testString').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                processRegex();
+            }
+        });
+    </script>
 
 </body>
 </html>
