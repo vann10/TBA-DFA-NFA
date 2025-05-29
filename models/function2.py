@@ -167,3 +167,7 @@ def visualize_nfa(nfa):
             dot.edge(state.id, to_state.id, label="ε")
 
     return dot
+
+    filepath = 'static/nfa_result'
+    dot.render(filepath, cleanup=True) 
+    return filepath + '.png'
