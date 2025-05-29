@@ -30,32 +30,49 @@ def history():
 def dfa_test_page():
     return render_template('tes_dfa.html')
 
+def convert_nested_to_flat(dfa):
+    """
+    Konversi DFA dengan format nested (delta) ke format flat (transitions) yang digunakan oleh fungsi test_dfa_string.
+    Jika sudah flat, return apa adanya.
+    """
+    if "transitions" in dfa:
+        return dfa
+    if "delta" in dfa:
+        flat = {}
+        for state, trans in dfa["delta"].items():
+            for symbol, target in trans.items():
+                flat[f"{state},{symbol}"] = target
+        return {
+            "states": dfa.get("states", []),
+            "alphabet": dfa.get("alphabet", []),
+            "transitions": flat,
+            "start_state": dfa.get("start", dfa.get("start_state", "")),
+            "accept_states": dfa.get("accept", dfa.get("accept_states", []))
+        }
+    return dfa
+
 @app.route('/dfa-test', methods=['POST'])
 def dfa_test():
     try:
         data = request.get_json()
-        
         # Validasi input
         if not data or 'dfa' not in data or 'string' not in data:
             return jsonify({'success': False, 'error': 'Missing required data'}), 400
-        
         dfa_input = data['dfa']
         test_string = data['string']
-        
         # Parse DFA jika dalam bentuk string
         if isinstance(dfa_input, str):
             try:
                 dfa_input = json.loads(dfa_input)
             except json.JSONDecodeError:
                 return jsonify({'success': False, 'error': 'Invalid DFA JSON format'}), 400
-        
+        # Konversi DFA ke format flat jika perlu
+        dfa_input = convert_nested_to_flat(dfa_input)
         # Validasi struktur DFA
         if not validate_dfa_input(dfa_input):
             return jsonify({'success': False, 'error': 'Invalid DFA structure'}), 400
-        
         # Test DFA dengan string
         result = test_dfa_string(dfa_input, test_string)
-        
         return jsonify({
             'success': True,
             'accepted': result['accepted'],
@@ -72,21 +89,21 @@ def test_dfa_string(dfa, input_string):
     try:
         current_state = dfa['start_state']
         trace = [current_state]
-        
+
         for symbol in input_string:
             if symbol not in dfa['alphabet']:
                 return {'accepted': False, 'trace': trace, 'error': f'Symbol {symbol} not in alphabet'}
-            
+
             transition_key = f"{current_state},{symbol}"
             if transition_key not in dfa['transitions']:
                 return {'accepted': False, 'trace': trace, 'error': f'No transition for {current_state} on {symbol}'}
-            
+
             current_state = dfa['transitions'][transition_key]
             trace.append(current_state)
-        
+
         accepted = current_state in dfa['accept_states']
         return {'accepted': accepted, 'trace': trace}
-        
+
     except Exception as e:
         return {'accepted': False, 'trace': [], 'error': str(e)}
 
@@ -101,6 +118,7 @@ def regex_nfa():
     transition_table = ""
     test_result = ""
     input_string = ""
+    nfa_image_path = ""
     nfa_image = False
 
     if request.method == "POST":
@@ -118,12 +136,18 @@ def regex_nfa():
             Regex match: {'Diterima' if regex_match else 'Ditolak'}<br>
             NFA match  : {'Diterima' if nfa_match else 'Ditolak'}
             """
+
+            dot = visualize_nfa(nfa)
+            image_path = "static/nfa_result"
+            dot.render(image_path, format="png", cleanup=True)
+            nfa_image_path = f"{image_path}.png"
             visualize_nfa(nfa)  
             nfa_image = True
-        
+
         except Exception as e:
             result = f"Terjadi error: {e}"
 
+    return render_template("regex_nfa.html", transition_table=transition_table, test_result=test_result, input_string=input_string, nfa_image=nfa_image_path)
     return render_template("regex_nfa.html", transition_table=transition_table, test_result=test_result, input_string=input_string, nfa_image=nfa_image)
 
 @app.route("/regex", methods=["POST"])
@@ -156,27 +180,27 @@ def dfa_minimize_page():
 def dfa_minimize():
     try:
         data = request.get_json()
-        
+
         # Validasi input data
         if not data or 'dfa' not in data:
             return jsonify({'success': False, 'error': 'Missing DFA data'}), 400
-        
+
         dfa_input = data['dfa']
-        
+
         # Parse DFA jika dalam bentuk string JSON
         if isinstance(dfa_input, str):
             try:
                 dfa_input = json.loads(dfa_input)
             except json.JSONDecodeError as e:
                 return jsonify({'success': False, 'error': f'Invalid JSON format: {str(e)}'}), 400
-        
+
         # Validasi struktur DFA
         if not validate_dfa_input(dfa_input):
             return jsonify({'success': False, 'error': 'Invalid DFA structure. Required: states, alphabet, transitions, start_state, accept_states'}), 400
-        
+
         # Panggil fungsi minimize DFA
         result = minimize_dfa(dfa_input)
-        
+
         return jsonify({
             'success': True,
             'original_dfa': dfa_input,
@@ -189,7 +213,7 @@ def dfa_minimize():
             },
             'message': f'DFA berhasil diminimalisasi dari {result["original_states"]} state menjadi {result["minimized_states"]} state'
         })
-        
+
     except Exception as e:
         return jsonify({'success': False, 'error': f'Minimization error: {str(e)}'}), 500
 
@@ -202,34 +226,34 @@ def dfa_compare_page():
 def dfa_compare():
     try:
         data = request.get_json()
-        
+
         # Validasi input
         if not data or 'dfa1' not in data or 'dfa2' not in data:
             return jsonify({'success': False, 'error': 'Missing DFA data'}), 400
-        
+
         # Parsing DFA
         try:
             if isinstance(data['dfa1'], str):
                 dfa1 = json.loads(data['dfa1'])
             else:
                 dfa1 = data['dfa1']
-                
+
             if isinstance(data['dfa2'], str):
                 dfa2 = json.loads(data['dfa2'])
             else:
                 dfa2 = data['dfa2']
         except json.JSONDecodeError as e:
             return jsonify({'success': False, 'error': f'Invalid JSON: {str(e)}'}), 400
-        
+
         result = compare_dfas(dfa1, dfa2)
-        
+
         return jsonify({
             'success': True,
             'equivalent': result['equivalent'],
             'details': result.get('details', {}),
             'message': f"DFA comparison completed: {'Equivalent' if result['equivalent'] else 'Not equivalent'}"
         })
-        
+
     except Exception as e:
         return jsonify({'success': False, 'error': f'Comparison error: {str(e)}'}), 500
 
