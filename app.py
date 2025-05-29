@@ -101,7 +101,7 @@ def regex_nfa():
     transition_table = ""
     test_result = ""
     input_string = ""
-    nfa_image_path = ""
+    nfa_image = False
 
     if request.method == "POST":
         State._id_counter = 0  # Reset ID state
@@ -118,16 +118,13 @@ def regex_nfa():
             Regex match: {'Diterima' if regex_match else 'Ditolak'}<br>
             NFA match  : {'Diterima' if nfa_match else 'Ditolak'}
             """
-
-            dot = visualize_nfa(nfa)
-            image_path = "static/nfa_result"
-            dot.render(image_path, format="png", cleanup=True)
-            nfa_image_path = f"{image_path}.png"
+            visualize_nfa(nfa)  
+            nfa_image = True
         
         except Exception as e:
             result = f"Terjadi error: {e}"
 
-    return render_template("regex_nfa.html", transition_table=transition_table, test_result=test_result, input_string=input_string, nfa_image=nfa_image_path)
+    return render_template("regex_nfa.html", transition_table=transition_table, test_result=test_result, input_string=input_string, nfa_image=nfa_image)
 
 @app.route("/regex", methods=["POST"])
 def handle_regex():
