@@ -1,5 +1,5 @@
 from flask import Flask, render_template, request, jsonify
-from models.function2 import State, regex_to_nfa
+from models.function2 import State, regex_to_nfa, visualize_nfa
 from models.function3 import minimize_dfa
 import re
 from models.function4 import compare_dfas
@@ -101,6 +101,7 @@ def regex_nfa():
     transition_table = ""
     test_result = ""
     input_string = ""
+    nfa_image_path = ""
 
     if request.method == "POST":
         State._id_counter = 0  # Reset ID state
@@ -117,10 +118,16 @@ def regex_nfa():
             Regex match: {'Diterima' if regex_match else 'Ditolak'}<br>
             NFA match  : {'Diterima' if nfa_match else 'Ditolak'}
             """
+
+            dot = visualize_nfa(nfa)
+            image_path = "static/nfa_result"
+            dot.render(image_path, format="png", cleanup=True)
+            nfa_image_path = f"{image_path}.png"
+        
         except Exception as e:
             result = f"Terjadi error: {e}"
 
-    return render_template("regex_nfa.html", transition_table=transition_table, test_result=test_result, input_string=input_string)
+    return render_template("regex_nfa.html", transition_table=transition_table, test_result=test_result, input_string=input_string, nfa_image=nfa_image_path)
 
 # ===== DFA MINIMIZATION =====
 @app.route('/dfa-minimize')
